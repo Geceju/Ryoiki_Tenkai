@@ -1,5 +1,5 @@
 #include "GameStateManager.h"
-#include <stdio.h>
+#include <iostream>
 #include "AEEngine.h"
 
 // Button Data
@@ -67,7 +67,7 @@ void MainMenu_Update()
         btnPlay.r = 0.5f; // Highlight effect
 
         if (AEInputCheckTriggered(AEVK_LBUTTON)) {
-            gGameStateNext = GS_PLAY; // SWITCH STATE
+            gGameStateNext = GS_Level1; // SWITCH STATE
         }
     }
     else {

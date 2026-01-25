@@ -7,7 +7,7 @@ typedef enum
     GS_RESTART, // Special state to restart current level
     GS_QUIT,    // Special state to close application
     GS_MAINMENU,
-    GS_PLAY,    // The actual game
+    GS_Level1,   
     GS_NONE     // Initialization value
 } GAME_STATE;
 

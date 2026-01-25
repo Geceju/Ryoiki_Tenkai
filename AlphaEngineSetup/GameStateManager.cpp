@@ -1,14 +1,7 @@
 #include "AEEngine.h"
 #include "GameStateManager.h"
-
-// Include Level Headers
-// (You would also include Level_Play.h here)
-void MainMenu_Load();
-void MainMenu_Initialize();
-void MainMenu_Update();
-void MainMenu_Draw();
-void MainMenu_Free();
-void MainMenu_Unload();
+#include "MainMenu.h"
+#include "Level1.h"
 
 // Global State Variables
 GAME_STATE gGameStateCurr = GS_NONE;
@@ -53,9 +46,13 @@ void GSM_Update()
             GameStateUnload = MainMenu_Unload;
             break;
 
-        case GS_PLAY:
-            // Point to your Game Level functions here
-            // GameStateLoad = Game_Load; ... etc
+        case GS_Level1:
+            GameStateLoad = Level1_Load;
+            GameStateInit = Level1_Initialize;
+            GameStateUpdate = Level1_Update;
+            GameStateDraw = Level1_Draw;
+            GameStateFree = Level1_Free;
+            GameStateUnload = Level1_Unload;
             break;
 
         case GS_QUIT:
