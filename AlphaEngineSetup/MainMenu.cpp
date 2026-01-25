@@ -1,5 +1,5 @@
 #include "GameStateManager.h"
-#include <stdio.h>
+#include <iostream>
 #include "AEEngine.h"
 
 // Structure defining the visual and spatial properties of a menu button
