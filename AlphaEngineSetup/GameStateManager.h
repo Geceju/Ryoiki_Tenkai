@@ -1,21 +1,23 @@
 #pragma once
-#include "AEEngine.h" // Standard Alpha Engine Include
+#include "AEEngine.h"
 
-// 1. Define the list of all possible states
+// Defines the various operational states the application can reside in
 typedef enum
 {
-    GS_RESTART, // Special state to restart current level
-    GS_QUIT,    // Special state to close application
-    GS_MAINMENU,
-    GS_PLAY,    // The actual game
-    GS_NONE     // Initialization value
+    GS_RESTART,   // Command to re-initialize the current active state
+    GS_QUIT,      // Command to terminate the main engine loop
+    GS_MAINMENU,  // The interactive menu interface
+    GS_PLAY,      // The dungeon generation and gameplay environment
+    GS_NONE       // A placeholder used during initial startup
 } GAME_STATE;
 
-// 2. Global variables (accessed by Main.c and levels)
+// Global trackers for the state machine to determine when to switch logic blocks
 extern GAME_STATE gGameStateCurr;
 extern GAME_STATE gGameStateNext;
 extern GAME_STATE gGameStatePrev;
 
-// 3. Function Prototypes for the State Manager
+// Prepares the manager to start at a specific state
 void GSM_Initialize(GAME_STATE startState);
+
+// Handles the logic for switching states and executing per-frame updates
 void GSM_Update();

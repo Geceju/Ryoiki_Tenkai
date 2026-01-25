@@ -12,13 +12,21 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GameStateManager.cpp" />
+    <ClCompile Include="Level.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MainMenu.cpp" />
+    <ClCompile Include="Player.cpp" />
+    <ClCompile Include="RoomGenerator.cpp" />
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GameStateManager.h" />
+    <ClInclude Include="IGenerator.h" />
+    <ClInclude Include="Level.h" />
     <ClInclude Include="MainMenu.h" />
+    <ClInclude Include="Player.h" />
+    <ClInclude Include="Room.h" />
+    <ClInclude Include="RoomGenerator.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -80,7 +88,7 @@
       <AdditionalDependencies>Alpha_EngineD.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(SolutionDir)Assets\" "$(OutDir)Assets\" /s /r /y /q`
+      <Command>xcopy "$(SolutionDir)Assets\" "$(OutDir)Assets\" /s /r /y /q 
 xcopy "$(SolutionDir)Extern\AlphaEngine\lib\freetype.dll" "$(OutDir)" /s /r /y /q
 xcopy "$(SolutionDir)Extern\AlphaEngine\lib\Alpha_EngineD.dll" "$(OutDir)" /s /r /y /q
 xcopy "$(SolutionDir)Extern\AlphaEngine\lib\fmodL.dll" "$(OutDir)" /s /r /y /q</Command>
