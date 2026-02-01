@@ -2,9 +2,11 @@
 #include <iostream>
 #include <array>
 #include "AEEngine.h"
+#include "jogo.h"
 
 
 AEGfxVertexList* pWallMesh = 0; // The mesh shape for buttons
+Character* player = nullptr;
 int TileSize = 48;
 std::array<std::array<int, 20>, 15> maze = { {
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
@@ -36,11 +38,17 @@ void Level1_Load() {
         -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f
     );
     pWallMesh = AEGfxMeshEnd();
+
+    player = new Character(1, 1, TileSize);
+    player->Load();
 }
 void Level1_Initialize() {
 
 }
 void Level1_Update() {
+    if (player) {
+        player->Update(maze);
+    }
 
 }
 void Level1_Draw() {
@@ -73,8 +81,16 @@ void Level1_Draw() {
             }
         }
     }
+
+    if (player) {
+        player->Draw();
+    }
 }
 void Level1_Free() {
+    if (player) {
+        delete player;
+        player = nullptr;
+    }
 
 }
 void Level1_Unload() {
