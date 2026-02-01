@@ -1,0 +1,203 @@
+#include "items.h"
+#include <algorithm>
+#include <cstdlib>
+#include <ctime>
+#include <iostream>
+
+// Item constructor - ONLY 3 TYPES
+Item::Item(float posX, float posY, ItemType itemType)
+	: x(posX), y(posY), type(itemType), collected(false),
+	radius(0.4f), lifetime(-1.0f), active(true),
+	color{ 0.0f, 0.0f, 0.0f, 1.0f } { // default initialize to opaque black
+
+	// Set color based on item type - ONLY 3 COLORS
+	switch (type) {
+	case ItemType::POINT:       // RED
+		color[0] = 1.0f;   // R = 100%
+		color[1] = 0.0f;   // G = 0%
+		color[2] = 0.0f;   // B = 0%
+		color[3] = 1.0f;   // A = 100% (Fully opaque)
+		break;
+	case ItemType::POWER_UP:    // BLUE
+		color[0] = 0.0f;   // R = 0%
+		color[1] = 0.0f;   // G = 0%
+		color[2] = 1.0f;   // B = 100%
+		color[3] = 1.0f;   // A = 100%
+		break;
+	case ItemType::SLOW_ENEMY:  // PURPLE
+		color[0] = 1.0f;   // R = 80%
+		color[1] = 0.0f;   // G = 0%
+		color[2] = 1.0f;   // B = 80%
+		color[3] = 1.0f;   // A = 100%
+		break;
+	default:
+		// Fallback: keep the default initialized color
+		break;
+	}
+}
+// Check if player collected this item
+bool Item::CheckCollection(float playerX, float playerY) const {
+	if (collected || !active) return false;
+
+	float dx = playerX - x;
+	float dy = playerY - y;
+	float distanceSquared = dx * dx + dy * dy;
+
+	return distanceSquared <= (radius * radius);
+}
+// Draw the item
+/*
+ * Coordinate System:
+ * - World/Grid: Tile-based coordinates (e.g., (1.0, 2.0) = tile at row 2, column 1)
+ * - Screen: Pixels, with (0,0) at window center
+ * - Tile size: 48 pixels
+ */
+void Item::Draw(AEGfxVertexList* pMesh) const {
+	if (collected || !active) return;
+	// convert tile coordinates to screen coordinates
+	float drawX = (x * 48.0f) - (f32)AEGfxGetWindowWidth() / 2.0f + (48.0f / 2.0f);
+	float drawY = (y * 48.0f) - (f32)AEGfxGetWindowHeight() / 2.0f + (48.0f / 2.0f);
+
+	AEMtx33 scale, trans, transform;
+	AEMtx33Scale(&scale, 48.0f * radius * 2.0f, 48.0f * radius * 2.0f);
+	AEMtx33Trans(&trans, drawX, drawY);
+	AEMtx33Concat(&transform, &trans, &scale);
+
+	// Use COLOR mode
+	AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+
+	// For walls: Use BlendColor
+	// For items: Use ColorToMultiply (different system)
+	AEGfxSetColorToMultiply(color[0], color[1], color[2], color[3]);
+
+	AEGfxSetTransform(transform.m);
+	AEGfxMeshDraw(pMesh, AE_GFX_MDM_TRIANGLES);
+}
+// ItemsManager implementation
+ItemsManager::ItemsManager() : tileSize(48), pItemMesh(nullptr) {
+	std::srand(static_cast<unsigned>(std::time(nullptr)));
+	CreateItemMesh();
+}
+// Destructor
+ItemsManager::~ItemsManager() {
+	if (pItemMesh) {
+		AEGfxMeshFree(pItemMesh);
+	}
+}
+// Create item mesh
+void ItemsManager::CreateItemMesh() {
+	// Create a SIMPLE square mesh for items (easier to debug)
+	AEGfxMeshStart();
+
+	// Simple 1x1 square with WHITE vertices
+	AEGfxTriAdd(
+		-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f,
+		0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
+		-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f
+	);
+	AEGfxTriAdd(
+		0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
+		0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f,
+		-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f
+	);
+
+	pItemMesh = AEGfxMeshEnd();
+
+	std::cout << "Created simple square mesh for items (3 types only)\n";
+}
+// Initialize the items system
+void ItemsManager::Initialize(int gridWidth, int gridHeight,
+	const std::vector<std::vector<int>>& maze, int tileSize) {
+	this->tileSize = tileSize;
+	items.clear();
+}
+// Spawn a specific item
+void ItemsManager::SpawnItem(float x, float y, ItemType type) {
+	items.emplace_back(x, y, type);
+
+	// Debug output
+	const char* typeNames[] = { "POINT (RED)", "POWER_UP (BLUE)", "SLOW_ENEMY (PURPLE)" };
+	std::cout << "Spawned " << typeNames[static_cast<int>(type)]
+		<< " at position (" << x << ", " << y << ")\n";
+}
+// Helper function to find empty tile
+bool ItemsManager::IsTileEmpty(int x, int y, const std::vector<std::vector<int>>& maze) const {
+	// Check bounds
+	if (y < 0 || y >= maze.size() || x < 0 || x >= maze[0].size()) {
+		return false;
+	}
+
+	// Check if it's a wall
+	if (maze[y][x] == 1) {
+		return false;
+	}
+
+	// Check if there's already an item at this position
+	for (const auto& item : items) {
+		if (static_cast<int>(item.x) == x && static_cast<int>(item.y) == y && !item.collected) {
+			return false;
+		}
+	}
+
+	return true;
+}
+// Spawn items randomly in the maze
+void ItemsManager::SpawnRandomItems(int count, const std::vector<std::vector<int>>& maze) {
+	int spawned = 0;
+	int maxAttempts = 1000;
+
+	while (spawned < count && maxAttempts-- > 0) {
+		int x = std::rand() % maze[0].size();
+		int y = std::rand() % maze.size();
+
+		if (IsTileEmpty(x, y, maze)) {
+			// Random item type (0-2 for 3 types)
+			int randomType = std::rand() % 3;
+			ItemType type = static_cast<ItemType>(randomType);
+
+			SpawnItem(static_cast<float>(x), static_cast<float>(y), type);
+			spawned++;
+		}
+	}
+
+	std::cout << "SpawnRandomItems: " << spawned << " items spawned\n";
+}
+// Update items (check collection, handle lifetime)
+void ItemsManager::Update(float playerX, float playerY, float deltaTime) {
+	for (auto& item : items) {
+		if (!item.collected && item.active) {
+			// Check collection
+			if (item.CheckCollection(playerX, playerY)) {
+				item.collected = true;
+				std::cout << "Item collected at (" << item.x << ", " << item.y << ")\n";
+			}
+		}
+	}
+}
+// Draw all items
+void ItemsManager::Draw() const {
+	for (const auto& item : items) {
+		item.Draw(pItemMesh);
+	}
+}
+// Get collected items count
+int ItemsManager::GetCollectedCount() const {
+	return std::count_if(items.begin(), items.end(),
+		[](const Item& item) { return item.collected; });
+}
+// Get total items count
+int ItemsManager::GetTotalCount() const {
+	return static_cast<int>(items.size());
+}
+// Reset all items
+void ItemsManager::Reset() {
+	for (auto& item : items) {
+		item.collected = false;
+		item.active = true;
+	}
+	std::cout << "All items reset\n";
+}
+// Check if all items are collected
+bool ItemsManager::AllItemsCollected() const {
+	return GetCollectedCount() == GetTotalCount() && GetTotalCount() > 0;
+}
