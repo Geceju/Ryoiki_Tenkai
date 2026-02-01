@@ -50,8 +50,8 @@ void Player::Update(float dt)
 
     // BOUNDARY CLAMPING: We calculate the half-extents of the 1600x900 map.
     // Since the dungeon is centered at (0,0), the limits are +/- 800 and +/- 450.
-    float boundaryX = 3200.0f / 2.0f;
-    float boundaryY = 1800.0f / 2.0f;
+    float boundaryX = 4096.0f / 2.0f;
+    float boundaryY = 4096.0f / 2.0f;
 
     // We check the player's X position and snap it back if it exceeds the horizontal edges.
     if (pos.x > boundaryX)

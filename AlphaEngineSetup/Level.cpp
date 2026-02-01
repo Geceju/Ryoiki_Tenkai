@@ -27,7 +27,10 @@ void Level_Init()
 {
     // The generator produces a centered dungeon layout based on our screen resolution.
     RoomGenerator generator;
-    g_DungeonRooms = generator.Generate(3200, 1800, 80, 600);
+
+    // 4096 width, 4096 height, 256 room size
+    g_DungeonRooms = generator.Generate(4096, 4096, 256);
+    //g_DungeonRooms = generator.Generate(4096, 4096, 80, 600);
 
     // We start the player at the center of the first room and reveal it immediately.
     // Instead of spawning at index 0, we search for the room the generator specifically tagged as the 'Start' room based on center-proximity.
@@ -131,8 +134,8 @@ void Level_Draw()
     // We draw the world border here so it appears on top of the rooms but only draws once.
     AEMtx33 bScale, bTrans, bTransform;
 
-    // We scale the unit square to the full 1600x900 world size.
-    AEMtx33Scale(&bScale, 3200.0f, 1800.0f);
+    // We scale the unit square to the world size we want.
+    AEMtx33Scale(&bScale, 4096.0f, 4096.0f);
     AEMtx33Trans(&bTrans, 0.0f, 0.0f);
     AEMtx33Concat(&bTransform, &bTrans, &bScale);
 
