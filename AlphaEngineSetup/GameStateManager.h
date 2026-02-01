@@ -7,7 +7,7 @@ typedef enum
     GS_RESTART,   // Command to re-initialize the current active state
     GS_QUIT,      // Command to terminate the main engine loop
     GS_MAINMENU,  // The interactive menu interface
-    GS_LEVEL1,      // The dungeon generation and gameplay environment
+    GS_LEVEL1,    // The dungeon generation and gameplay environment
     GS_NONE       // A placeholder used during initial startup
 } GAME_STATE;
 
@@ -21,3 +21,6 @@ void GSM_Initialize(GAME_STATE startState);
 
 // Handles the logic for switching states and executing per-frame updates
 void GSM_Update();
+
+// Cleans up the current state before application exit
+void GSM_Unload();

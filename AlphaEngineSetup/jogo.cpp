@@ -11,6 +11,9 @@ Character::~Character() {
 }
 
 void Character::Load() {
+
+    if (pMesh != nullptr) return;
+
     // Create a white square mesh
     AEGfxMeshStart();
 
@@ -85,6 +88,8 @@ void Character::Update(const std::array<std::array<int, 20>, 15>& maze) {
 }
 
 void Character::Draw() {
+
+    // If pMesh is null, calling AEGfxMeshDraw will make the game exit/crash.
     if (!pMesh) return;
 
     // Calculate world position from grid position

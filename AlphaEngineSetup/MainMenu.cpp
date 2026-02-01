@@ -95,6 +95,11 @@ void MainMenu_Update()
     else {
         btnExit.r = 1.0f; // Reset to full red
     }
+
+    // Press Q to quit the game entirely
+    if (AEInputCheckTriggered(AEVK_Q)) {
+        gGameStateNext = GS_QUIT;
+    }
 }
 
 void MainMenu_Draw()
@@ -133,6 +138,7 @@ void MainMenu_Unload()
 {
     if (pMeshButton)
     {
+        std::cout << "Cleaning up Main Menu Mesh!" << std::endl;
         AEGfxMeshFree(pMeshButton);
         pMeshButton = nullptr;
     }

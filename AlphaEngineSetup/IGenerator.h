@@ -16,12 +16,8 @@ public:
     {
     }
 
-    // UPDATED: We changed the signature to match our Grid system (3 parameters).
-    // The "= 0" means any class inheriting from this MUST have this exact function.
+    // Generates a randomized dungeon layout within a wxh area using a fixed roomSize; returns ownership of Room objects via unique_ptrs
     virtual std::vector<std::unique_ptr<Room>> Generate(int w, int h, int roomSize) = 0;
-
-    //// Pure virtual function that forces derived classes to implement a room list generator
-    //virtual std::vector<std::unique_ptr<Room>> Generate(int w, int h, int min, int max) = 0;
 };
 
 #endif

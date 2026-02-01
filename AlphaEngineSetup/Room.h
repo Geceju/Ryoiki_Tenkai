@@ -12,22 +12,34 @@ enum class RoomType { Normal, Boss, Start };
 class Room
 {
 public:
-    // The geometric data defining the room's size and location
-    Rect rect;
-    RoomType type = RoomType::Normal; // Default to normal
-
-    bool isDiscovered = false; // Tracks if the player has entered or seen this room
-
-    // Initializes a room with a specific rectangular boundary
-    Room(Rect area)
-        : rect(area)
+    // Explicit destructor to ensure the neighbors vector is released
+    ~Room()
     {
+        ClearNeighbours();
     }
 
+    // The geometric boundary defining the room's physical footprint; 
+    // Used for collision, discovery logic, and as the source for mesh scaling
+    Rect rect;
+
+    // Default to normal
+    RoomType type = RoomType::Normal; 
+
+    // Tracks if the player has entered or seen this room
+    bool isDiscovered = false; 
+
+    // Initializes a room with a specific rectangular boundary
+    Room(Rect area) : rect(area) {}
+
     // Stores a reference to an adjacent room for pathfinding or hallway logic
+    // Includes a safety check to prevent duplicate neighbor entries
     void AddNeighbour(Room* neighbour)
     {
-        m_neighbours.push_back(neighbour);
+        // Only add if the pointer is valid and not already in our list
+        if (neighbour != nullptr && !IsNeighbour(neighbour))
+        {
+            m_neighbours.push_back(neighbour);
+        }
     }
 
     // Provides read-only access to the list of connected rooms
@@ -47,6 +59,13 @@ public:
             }
         }
         return false;
+    }
+
+    // Clears the neighbor list to break memory cycles during cleanup
+    void ClearNeighbours()
+    {
+        m_neighbours.clear();
+        m_neighbours.shrink_to_fit();
     }
 
     // Calculates the shared geometric area between this room and another

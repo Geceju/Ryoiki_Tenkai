@@ -24,8 +24,8 @@ int Rect::width() const
 
 int Rect::height() const
 {
-    // Calculate the vertical distance between the top and bottom edges
-    return bottom - top;
+    // Subtract the smaller number (bottom) from the larger number (top)
+    return top - bottom;
 }
 
 int Rect::area() const
@@ -48,7 +48,7 @@ bool Rect::IsIntersect(const Rect& other) const
     // Perform a standard AABB collision check to see if two rectangles overlap in 2D space
     // An intersection occurs if all boundary conditions are met simultaneously
     return (left < other.right && right > other.left &&
-        top < other.bottom && bottom > other.top);
+        top > other.bottom && bottom < other.top);
 }
 
 

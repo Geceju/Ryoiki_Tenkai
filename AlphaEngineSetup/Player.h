@@ -6,8 +6,8 @@
 // The player class encapsulates movement, rendering, and spatial data
 class Player {
 public:
-    AEVec2 pos;           // Current world-space coordinates
-    float speed;          // Movement velocity in pixels per second
+    AEVec2 pos;             // Current world-space coordinates
+    float speed;            // Movement velocity in pixels per second
     AEGfxVertexList* pMesh; // Pointer to the triangle geometric data
 
     Player();

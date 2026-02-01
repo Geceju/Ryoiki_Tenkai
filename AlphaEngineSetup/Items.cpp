@@ -80,8 +80,16 @@ ItemsManager::ItemsManager() : tileSize(48), pItemMesh(nullptr) {
 }
 // Destructor
 ItemsManager::~ItemsManager() {
+	// 1. Explicitly clear the vector to call destructors on all 'Item' objects
+	items.clear();
+
+	// 2. Force the vector to release its internal capacity (the 12/16 byte leaks!)
+	items.shrink_to_fit();
+
+	// 3. Free the GPU mesh
 	if (pItemMesh) {
 		AEGfxMeshFree(pItemMesh);
+		pItemMesh = nullptr;
 	}
 }
 // Create item mesh

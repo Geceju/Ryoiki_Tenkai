@@ -53,18 +53,6 @@ void Level1_Load() {
 	pWallMesh = AEGfxMeshEnd();
 
 	std::cout << "Level1 Loaded - Items Test\n";
-    AEGfxMeshStart();
-    AEGfxTriAdd(
-        -0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f,
-        0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
-        -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f
-    );
-    AEGfxTriAdd(
-        0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
-        0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f,
-        -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f
-    );
-    pWallMesh = AEGfxMeshEnd();
 
     player = new Character(1, 1, TileSize);
     player->Load();
@@ -73,7 +61,9 @@ void Level1_Initialize() {
 	std::cout << "Initializing Items Manager (3 items only)...\n";
 
 	// Create items manager
-	itemsManager = new ItemsManager();
+	if (itemsManager == nullptr) {
+		itemsManager = new ItemsManager();
+	}
 
 	// Initialize with maze dimensions
 	auto mazeVector = ConvertMazeToVector();
@@ -187,22 +177,48 @@ void Level1_Draw() {
     }
 
 }
-void Level1_Free() {
-    if (player) {
-        delete player;
-        player = nullptr;
-    }
 
+void Level1_Free() {
+	if (itemsManager != nullptr) {
+		// Force the internal vector to die
+		itemsManager->GetItems().clear();
+		itemsManager->GetItems().shrink_to_fit();
+
+		delete itemsManager;
+		itemsManager = nullptr;
+	}
+
+	if (player) {
+		delete player;
+		player = nullptr;
+	}
+
+	// Cleanup Mesh
 	if (pWallMesh) {
 		AEGfxMeshFree(pWallMesh);
 		pWallMesh = nullptr;
 	}
-
-	if (itemsManager) {
-		delete itemsManager;
-		itemsManager = nullptr;
-	}
 }
+//void Level1_Free() {
+//    if (player) {
+//		player->Unload();
+//        delete player;
+//        player = nullptr;
+//    }
+//
+//	if (pWallMesh) {
+//		AEGfxMeshFree(pWallMesh);
+//		pWallMesh = nullptr;
+//	}
+//
+//	if (itemsManager) {
+//		itemsManager->GetItems().clear();
+//		itemsManager->GetItems().shrink_to_fit();
+//
+//		delete itemsManager;
+//		itemsManager = nullptr;
+//	}
+//}
 void Level1_Unload() {
 	std::cout << "Level1 Unloading\n";
 }
