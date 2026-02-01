@@ -2,6 +2,8 @@
 #include "GameStateManager.h"
 #include "Level.h"
 #include "MainMenu.h"
+#include "Level1.h"
+#include "AEInput.h"
 
 // Tracking variables for the current and next game states
 GAME_STATE gGameStateCurr = GS_NONE;
@@ -25,82 +27,60 @@ void GSM_Initialize(GAME_STATE startState)
 
 void GSM_Update()
 {
-    // Check if the state needs to change or if the current state needs to restart
-    if (gGameStateCurr != gGameStateNext || gGameStateNext == GS_RESTART)
-    {
-        // Clean up the memory and assets of the state we are currently leaving
-        if (GameStateFree)
-        {
-            GameStateFree();
-        }
+	// If the state has changed
+	if (gGameStateCurr != gGameStateNext || gGameStateNext == GS_RESTART)
+	{
+		// Unload Current State
+		if (GameStateFree) GameStateFree();
+		if (GameStateUnload) GameStateUnload();
 
-        if (GameStateUnload)
-        {
-            GameStateUnload();
-        }
-
-        // Set the current state to the next state, unless we are restarting
-        if (gGameStateNext != GS_RESTART)
-        {
+		if (gGameStateNext != GS_RESTART)
+        {    
             gGameStatePrev = gGameStateCurr;
-            gGameStateCurr = gGameStateNext;
+			gGameStateCurr = gGameStateNext;
         }
         else
         {
             gGameStateNext = gGameStateCurr;
         }
 
-        // Map the function pointers to the specific logic of the selected state
-        switch (gGameStateCurr)
-        {
-        case GS_MAINMENU:
-            GameStateLoad = MainMenu_Load;
-            GameStateInit = MainMenu_Initialize;
-            GameStateUpdate = MainMenu_Update;
-            GameStateDraw = MainMenu_Draw;
-            GameStateFree = MainMenu_Free;
-            GameStateUnload = MainMenu_Unload;
-            break;
+		// Load New State
+		switch (gGameStateCurr)
+		{
+		case GS_MAINMENU:
+			GameStateLoad = MainMenu_Load;
+			GameStateInit = MainMenu_Initialize;
+			GameStateUpdate = MainMenu_Update;
+			GameStateDraw = MainMenu_Draw;
+			GameStateFree = MainMenu_Free;
+			GameStateUnload = MainMenu_Unload;
+			break;
 
-        case GS_PLAY:
-            GameStateLoad = Level_Load;
-            GameStateInit = Level_Init;
-            GameStateUpdate = Level_Update;
-            GameStateDraw = Level_Draw;
-            GameStateFree = Level_Free;
-            GameStateUnload = Level_Unload;
-            break;
+		case GS_Level1:
+			GameStateLoad = Level1_Load;
+			GameStateInit = Level1_Initialize;
+			GameStateUpdate = Level1_Update;
+			GameStateDraw = Level1_Draw;
+			GameStateFree = Level1_Free;
+			GameStateUnload = Level1_Unload;
+			break;
 
-        case GS_QUIT:
-            // The main loop in Main.cpp will check for GS_QUIT to close the window
-            break;
+		case GS_QUIT:
+			// Handled in Main Loop
+			break;
 
-        default:
-            break;
-        }
+		default:
+			break;
+		}
 
-        // Load the assets and run the initialization for the new state
-        if (GameStateLoad)
-        {
-            GameStateLoad();
-        }
+		// Initialize New State
+		if (GameStateLoad) GameStateLoad();
+		if (GameStateInit) GameStateInit();
+	}
 
-        if (GameStateInit)
-        {
-            GameStateInit();
-        }
-    }
-
-    // Execute the logic and rendering for the state that is currently running
-    if (GameStateUpdate)
-    {
-        GameStateUpdate();
-    }
-
-    if (GameStateDraw)
-    {
-        GameStateDraw();
-    }
+	// Run Current State
+	if (GameStateUpdate) GameStateUpdate();
+	if (GameStateDraw) GameStateDraw();
 }
 
 //#include "AEEngine.h"
