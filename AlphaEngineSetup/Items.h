@@ -34,7 +34,7 @@ class ItemsManager {
 private:
 	std::vector<Item> items;
 	AEGfxVertexList* pItemMesh;
-	int tileSize;
+	float tileSize;
 
 public:
 	// Constructor & Destructor
@@ -42,7 +42,7 @@ public:
 	~ItemsManager();
 
 	// Initialize the items system
-	void Initialize(int gridWidth, int gridHeight, const std::vector<std::vector<int>>& maze, int tileSize = 48);
+	void Initialize(int gridWidth, int gridHeight, const std::vector<std::vector<int>>& maze, float tileSize = 48.0f);
 
 	// Spawn a specific item
 	void SpawnItem(float x, float y, ItemType type);

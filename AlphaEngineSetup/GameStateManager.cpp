@@ -56,13 +56,13 @@ void GSM_Update()
 			GameStateUnload = MainMenu_Unload;
 			break;
 
-		case GS_Level1:
-			GameStateLoad = Level1_Load;
-			GameStateInit = Level1_Initialize;
-			GameStateUpdate = Level1_Update;
-			GameStateDraw = Level1_Draw;
-			GameStateFree = Level1_Free;
-			GameStateUnload = Level1_Unload;
+		case GS_LEVEL1:
+			GameStateLoad = Level_Load;
+			GameStateInit = Level_Init;
+			GameStateUpdate = Level_Update;
+			GameStateDraw = Level_Draw;
+			GameStateFree = Level_Free;
+			GameStateUnload = Level_Unload;
 			break;
 
 		case GS_QUIT:

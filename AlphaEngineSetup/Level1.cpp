@@ -1,17 +1,11 @@
 #include "GameStateManager.h"
 #include <iostream>
-#include <array>
-#include "AEEngine.h"
 #include "Items.h"
 #include "jogo.h"
 
 AEGfxVertexList* pWallMesh = nullptr; // The mesh shape for buttons
-
-
-
-AEGfxVertexList* pWallMesh = 0; // The mesh shape for buttons
 Character* player = nullptr;
-int TileSize = 48;
+float TileSize = 48;
 
 std::array<std::array<int, 20>, 15> maze = { {
 	{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
@@ -141,7 +135,7 @@ void DrawWall(int x, int y) {
 
 	// Set wall color to white
 	AEGfxSetRenderMode(AE_GFX_RM_COLOR);
-	AEGfxSetBlendColor(1.0f, 1.0f, 1.0f, 1.0f);
+	AEGfxSetBlendColor(1, 1, 1, 1);
 	AEGfxSetTransform(transform.m);
 	AEGfxMeshDraw(pWallMesh, AE_GFX_MDM_TRIANGLES);
 }

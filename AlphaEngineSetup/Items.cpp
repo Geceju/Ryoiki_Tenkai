@@ -107,7 +107,7 @@ void ItemsManager::CreateItemMesh() {
 }
 // Initialize the items system
 void ItemsManager::Initialize(int gridWidth, int gridHeight,
-	const std::vector<std::vector<int>>& maze, int tileSize) {
+	const std::vector<std::vector<int>>& maze, float tileSize) {
 	this->tileSize = tileSize;
 	items.clear();
 }
@@ -182,8 +182,8 @@ void ItemsManager::Draw() const {
 }
 // Get collected items count
 int ItemsManager::GetCollectedCount() const {
-	return std::count_if(items.begin(), items.end(),
-		[](const Item& item) { return item.collected; });
+	return static_cast<int>(std::count_if(items.begin(), items.end(),
+		[](const Item& item) { return item.collected; }));
 }
 // Get total items count
 int ItemsManager::GetTotalCount() const {

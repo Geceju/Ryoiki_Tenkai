@@ -7,7 +7,7 @@ typedef enum
     GS_RESTART,   // Command to re-initialize the current active state
     GS_QUIT,      // Command to terminate the main engine loop
     GS_MAINMENU,  // The interactive menu interface
-    GS_PLAY,      // The dungeon generation and gameplay environment
+    GS_LEVEL1,      // The dungeon generation and gameplay environment
     GS_NONE       // A placeholder used during initial startup
 } GAME_STATE;
 

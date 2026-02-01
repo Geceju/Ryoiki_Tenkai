@@ -1,7 +1,7 @@
 #include "jogo.h"
 #include <iostream>
 
-Character::Character(int startX, int startY, int tile)
+Character::Character(int startX, int startY, float tile)
     : gridX(startX), gridY(startY), tileSize(tile), pMesh(nullptr),
     moveTimer(0.0f), moveDelay(0.10f) {  
 }

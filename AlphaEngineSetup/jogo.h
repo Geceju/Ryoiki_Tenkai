@@ -6,7 +6,7 @@ class Character {
 private:
     int gridX;           
     int gridY;           
-    int tileSize;        
+    float tileSize;        
     AEGfxVertexList* pMesh; 
 
     // Movement timing
@@ -15,7 +15,7 @@ private:
 
 public:
     // Constructor
-    Character(int startX, int startY, int tile);
+    Character(int startX, int startY, float tile);
 
     // Destructor
     ~Character();

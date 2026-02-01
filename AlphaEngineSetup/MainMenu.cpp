@@ -72,7 +72,7 @@ void MainMenu_Update()
         btnPlay.g = 0.5f; // Hover effect (darker green)
         if (AEInputCheckTriggered(AEVK_LBUTTON))
         {
-            gGameStateNext = GS_PLAY;
+            gGameStateNext = GS_LEVEL1;
         }
     }
     else
