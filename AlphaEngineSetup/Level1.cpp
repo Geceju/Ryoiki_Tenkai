@@ -6,10 +6,6 @@
 #include "jogo.h"
 
 AEGfxVertexList* pWallMesh = nullptr; // The mesh shape for buttons
-
-
-
-AEGfxVertexList* pWallMesh = 0; // The mesh shape for buttons
 Character* player = nullptr;
 int TileSize = 48;
 
