@@ -31,6 +31,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Items.cpp">
+    <ClCompile Include="jogo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -48,6 +49,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Items.h">
+    <ClInclude Include="jogo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

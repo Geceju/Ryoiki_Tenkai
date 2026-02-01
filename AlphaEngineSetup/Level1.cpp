@@ -3,9 +3,14 @@
 #include <array>
 #include "AEEngine.h"
 #include "Items.h"
-
+#include "jogo.h"
 
 AEGfxVertexList* pWallMesh = nullptr; // The mesh shape for buttons
+
+
+
+AEGfxVertexList* pWallMesh = 0; // The mesh shape for buttons
+Character* player = nullptr;
 int TileSize = 48;
 
 std::array<std::array<int, 20>, 15> maze = { {
@@ -54,6 +59,21 @@ void Level1_Load() {
 	pWallMesh = AEGfxMeshEnd();
 
 	std::cout << "Level1 Loaded - Items Test\n";
+    AEGfxMeshStart();
+    AEGfxTriAdd(
+        -0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f,
+        0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
+        -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f
+    );
+    AEGfxTriAdd(
+        0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
+        0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f,
+        -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f
+    );
+    pWallMesh = AEGfxMeshEnd();
+
+    player = new Character(1, 1, TileSize);
+    player->Load();
 }
 void Level1_Initialize() {
 	std::cout << "Initializing Items Manager (3 items only)...\n";
@@ -91,6 +111,9 @@ void Level1_Update() {
 		auto mazeVector = ConvertMazeToVector();
 		itemsManager->SpawnRandomItems(20, mazeVector);
 	}
+    if (player) {
+        player->Update(maze);
+    }
 
 	// Press C to "collect" all items (simulate player at position 5,5)
 	if (AEInputCheckTriggered(AEVK_C)) {
@@ -165,9 +188,16 @@ void Level1_Draw() {
 		itemsManager->Draw();
 	}
 
+	if (player) {
+        player->Draw();
+    }
+
 }
 void Level1_Free() {
-	std::cout << "Freeing Level1 resources...\n";
+    if (player) {
+        delete player;
+        player = nullptr;
+    }
 
 	if (pWallMesh) {
 		AEGfxMeshFree(pWallMesh);
