@@ -1,21 +1,18 @@
-#pragma once
 #ifndef ROOM_GENERATOR_H
 #define ROOM_GENERATOR_H
 
-#include "IGenerator.h"
 #include <vector>
 #include <memory>
+#include "Room.h"
 
-// A generator that utilizes recursive subdivision to create non-overlapping rooms
-class RoomGenerator : public IGenerator
+class RoomGenerator
 {
 public:
-    // Constructs a full list of rooms based on the provided dimensional constraints
+    // Main generation entry point: creates a grid of rooms centered at 0,0
     std::vector<std::unique_ptr<Room>> Generate(int width, int height, int roomSize);
 
-
 private:
-    // Post-processing step to link rooms that share a physical border
+    // Internal helper to link adjacent rooms for the discovery system
     void FindNeighbours(std::vector<std::unique_ptr<Room>>& rooms);
 };
 

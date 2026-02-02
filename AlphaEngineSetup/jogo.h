@@ -1,54 +1,52 @@
-#pragma once
+#ifndef CHARACTER_H
+#define CHARACTER_H
+
 #include "AEEngine.h"
-#include <array>
+#include <vector>
+#include <memory>
+#include "Room.h" 
 
 class ItemsManager;
 
-class Character {
-private:
-    int gridX;           
-    int gridY;           
-    float tileSize;        
-    AEGfxVertexList* pMesh; 
-
-    // Movement timing
-    float moveTimer;     // Timer to control movement speed
-    float moveDelay;     // Delay between moves
-
+class Character
+{
 public:
-    // Constructor
     Character(int startX, int startY, float tile);
-
-    // Destructor
     ~Character();
 
     void Load();
-
     void Unload();
 
-    // Update character
-    void Update(const std::array<std::array<int, 20>, 15>& maze);
-
-    // Draw character
+    // Core loop functions
+    void Update(const std::vector<std::unique_ptr<Room>>& rooms);
     void Draw();
 
-    // Getters
+    // Getters and Setters
+    void SetPosition(int x, int y);
     int GetGridX() const { return gridX; }
     int GetGridY() const { return gridY; }
+    float GetWorldX() const { return worldX; }
+    float GetWorldY() const { return worldY; }
 
-    // Item Collection
-    float GetWorldX() const { return static_cast<float>(gridX); }
-    float GetWorldY() const { return static_cast<float>(gridY); }
-
-    // Function for item collection with E key
     void CollectItem(ItemsManager& itemsManager);
 
-
-    // Setters
-    void SetPosition(int x, int y);
-    void SetMoveDelay(float delay) { moveDelay = delay; }
-
 private:
-    // Check if a position is valid (not a wall)
-    bool IsValidPosition(int x, int y, const std::array<std::array<int, 20>, 15>& maze);
+    // Helper for free-roam collision detection
+    bool IsPointInsideAnyRoom(float x, float y, const std::vector<std::unique_ptr<Room>>& rooms);
+
+    // Grid tracking
+    int gridX;
+    int gridY;
+    float tileSize;
+
+    // Animation and Movement
+    float worldX;       // Visual X position in world space
+    float worldY;       // Visual Y position in world space
+    float moveSpeed;    // Pixels per second
+    float moveTimer;    // Drives the sine-wave walking animation
+    bool isMoving;      // Tracks if the player is currently providing input
+
+    AEGfxVertexList* pMesh;
 };
+
+#endif

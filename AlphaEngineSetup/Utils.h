@@ -44,8 +44,6 @@ public:
     int centerY() const { return (top + bottom) / 2; }
 };
 
-
-
 // A collection of helper functions for generating pseudo-random values
 namespace Random
 {
