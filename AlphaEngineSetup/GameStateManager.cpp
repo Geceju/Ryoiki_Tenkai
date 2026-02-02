@@ -65,12 +65,6 @@ void GSM_Update()
 			break;
 
 		case GS_QUIT:
-			GameStateLoad = nullptr;
-			GameStateInit = nullptr;
-			GameStateUpdate = nullptr;
-			GameStateDraw = nullptr;
-			GameStateFree = nullptr;
-			GameStateUnload = nullptr;
 			break;
 
 		default:
