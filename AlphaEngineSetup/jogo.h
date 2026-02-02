@@ -2,6 +2,8 @@
 #include "AEEngine.h"
 #include <array>
 
+class ItemsManager;
+
 class Character {
 private:
     int gridX;           
@@ -33,6 +35,14 @@ public:
     // Getters
     int GetGridX() const { return gridX; }
     int GetGridY() const { return gridY; }
+
+    // Item Collection
+    float GetWorldX() const { return static_cast<float>(gridX); }
+    float GetWorldY() const { return static_cast<float>(gridY); }
+
+    // Function for item collection with E key
+    void CollectItem(ItemsManager& itemsManager);
+
 
     // Setters
     void SetPosition(int x, int y);
