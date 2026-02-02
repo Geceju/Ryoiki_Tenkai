@@ -1,82 +1,35 @@
-#pragma once
+#ifndef ROOM_H
+#define ROOM_H
 
-#ifndef ROOM_HPP
-#define ROOM_HPP
-
-#include "utils.h" 
+#include "AEEngine.h"
 #include <vector>
+#include "Utils.h" // Pulls the Rect definition from Utils.h
 
-enum class RoomType { Normal, Boss, Start };
+// Room types used for gameplay logic and visual tinting
+enum class RoomType
+{
+    Normal,
+    Start,
+    Boss
+};
 
-// Represents a single area in the dungeon and maintains its connectivity graph
 class Room
 {
 public:
-    // Explicit destructor to ensure the neighbors vector is released
-    ~Room()
-    {
-        ClearNeighbours();
-    }
+    // Initializes the room with geometry and default status
+    Room(Rect r) : rect(r), type(RoomType::Normal), isDiscovered(false) {}
 
-    // The geometric boundary defining the room's physical footprint; 
-    // Used for collision, discovery logic, and as the source for mesh scaling
-    Rect rect;
+    Rect rect;              // Boundary coordinates defining the edges
+    RoomType type;          // Normal, Start, or Boss
+    bool isDiscovered;      // Logic for fog of war
 
-    // Default to normal
-    RoomType type = RoomType::Normal; 
-
-    // Tracks if the player has entered or seen this room
-    bool isDiscovered = false; 
-
-    // Initializes a room with a specific rectangular boundary
-    Room(Rect area) : rect(area) {}
-
-    // Stores a reference to an adjacent room for pathfinding or hallway logic
-    // Includes a safety check to prevent duplicate neighbor entries
-    void AddNeighbour(Room* neighbour)
-    {
-        // Only add if the pointer is valid and not already in our list
-        if (neighbour != nullptr && !IsNeighbour(neighbour))
-        {
-            m_neighbours.push_back(neighbour);
-        }
-    }
-
-    // Provides read-only access to the list of connected rooms
-    const std::vector<Room*>& GetNeighbours() const
-    {
-        return m_neighbours;
-    }
-
-    // Determines if a specific room is already registered as a neighbor
-    bool IsNeighbour(Room* other)
-    {
-        for (auto* n : m_neighbours)
-        {
-            if (n == other)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // Clears the neighbor list to break memory cycles during cleanup
-    void ClearNeighbours()
-    {
-        m_neighbours.clear();
-        m_neighbours.shrink_to_fit();
-    }
-
-    // Calculates the shared geometric area between this room and another
-    Rect Intersect(Room* other)
-    {
-        return rect.Intersect(other->rect);
-    }
+    // Connection management for neighbor discovery logic
+    void AddNeighbour(Room* neighbour) { neighbours.push_back(neighbour); }
+    const std::vector<Room*>& GetNeighbours() const { return neighbours; }
+    void ClearNeighbours() { neighbours.clear(); }
 
 private:
-    // List of non-owning pointers to adjacent rooms used to visualize connectivity
-    std::vector<Room*> m_neighbours;
+    std::vector<Room*> neighbours; // List of rooms touching this one
 };
 
 #endif
