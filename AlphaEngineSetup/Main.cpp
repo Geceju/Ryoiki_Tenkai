@@ -14,7 +14,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 
     // Replace 344 with the actual number from your VS Output window
-    // Uncommment this line to find memory leaks or code errors
+    // !!!!!!!!!!!!!!!!!!!! Uncommment this line to find memory leaks or code errors !!!!!!!!!!!!!!!!!!!!
     /*_CrtSetBreakAlloc(344);*/
 
     // Tell the compiler to ignore these variables to avoid unused parameter warnings

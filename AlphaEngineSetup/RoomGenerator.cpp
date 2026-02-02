@@ -7,7 +7,7 @@
 
 // [FIX 2] PROJECT INCLUDES COME SECOND
 #include "RoomGenerator.h"
-#include "utils.h"
+#include "Utils.h"
 #include "Tilesets.h" // Needed for TilesetManager
 
 // EXPLANATION: Generates a grid-based layout of rooms within the specified width and height
