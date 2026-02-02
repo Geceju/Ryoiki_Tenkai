@@ -27,7 +27,7 @@
     <ClCompile Include="Utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Level1.cpp">
+    <ClCompile Include="References.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Items.cpp">
@@ -37,9 +37,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Level.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Player.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="RoomGenerator.cpp">

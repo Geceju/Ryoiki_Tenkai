@@ -1,12 +1,14 @@
-// [FIX 1] Include Standard Libraries FIRST to prevent conflicts with AEEngine/Windows.h
+// [FIX 1] STANDARD INCLUDES MUST COME FIRST
 #include <chrono>
 #include <cmath>
 #include <algorithm>
+#include <vector>
+#include <memory>
 
-// [FIX 2] Include Project Headers AFTER standard libraries
+// [FIX 2] PROJECT INCLUDES COME SECOND
 #include "RoomGenerator.h"
 #include "utils.h"
-#include "Tilesets.h" // Needed for TilesetManager::Load()
+#include "Tilesets.h" // Needed for TilesetManager
 
 // EXPLANATION: Generates a grid-based layout of rooms within the specified width and height
 std::vector<std::unique_ptr<Room>> RoomGenerator::Generate(int width, int height, int roomSize)

@@ -1,14 +1,16 @@
 #include "Room.h"
 
+// Constructor
 Room::Room(Rect area) : rect(area)
 {
     type = RoomType::Normal;
     isDiscovered = false;
 
-    // [FIX] Using Type_01 as requested
+    // Default to the first style in your list
     tilesetID = TilesetType::Type_01;
 }
 
+// Destructor
 Room::~Room()
 {
     ClearNeighbours();
@@ -16,6 +18,7 @@ Room::~Room()
 
 void Room::AddNeighbour(Room* neighbour)
 {
+    // Only add if the pointer is valid and not already in our list
     if (neighbour != nullptr && !IsNeighbour(neighbour))
     {
         m_neighbours.push_back(neighbour);
@@ -31,7 +34,10 @@ bool Room::IsNeighbour(Room* other)
 {
     for (auto* n : m_neighbours)
     {
-        if (n == other) return true;
+        if (n == other)
+        {
+            return true;
+        }
     }
     return false;
 }

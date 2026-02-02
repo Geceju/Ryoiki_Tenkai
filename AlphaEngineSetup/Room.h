@@ -1,39 +1,42 @@
-#ifndef ROOM_H
-#define ROOM_H
+#pragma once
+#ifndef ROOM_HPP
+#define ROOM_HPP
 
-#include "AEEngine.h"
+#include "utils.h" 
 #include <vector>
-#include "Utils.h" // Pulls the Rect definition from Utils.h
-#include "Tilesets.h"
+// [IMPORTANT] Include this so the Room knows what a "TilesetType" is
+#include "Tilesets.h" 
 
-// Room types used for gameplay logic and visual tinting
-enum class RoomType
-{
-    Normal,
-    Start,
-    Boss
-};
+enum class RoomType { Normal, Boss, Start };
 
+// Represents a single area in the dungeon
 class Room
 {
 public:
-    // Initializes the room with geometry and default status
-    Room(Rect r) : rect(r), type(RoomType::Normal), isDiscovered(false) {}
+    // --- Data Members ---
+    Rect rect;
+    RoomType type;
+    bool isDiscovered;
 
-    Rect rect;              // Boundary coordinates defining the edges
-    RoomType type;          // Normal, Start, or Boss
-    bool isDiscovered;      // Logic for fog of war
+    // [New System] The ID of the visual style assigned to this room
     TilesetType tilesetID;
 
-    // Connection management for neighbor discovery logic
-    void AddNeighbour(Room* neighbour) { neighbours.push_back(neighbour); }
-    const std::vector<Room*>& GetNeighbours() const { return neighbours; }
+    // --- Function Declarations (NO BODIES) ---
+
+    // Constructor
+    Room(Rect area);
+
+    // Destructor
+    ~Room();
+
+    void AddNeighbour(Room* neighbour);
+    const std::vector<Room*>& GetNeighbours() const;
     bool IsNeighbour(Room* other);
-    void ClearNeighbours() { neighbours.clear(); }
+    void ClearNeighbours();
     Rect Intersect(Room* other);
 
 private:
-    std::vector<Room*> neighbours; // List of rooms touching this one
+    std::vector<Room*> m_neighbours;
 };
 
 #endif
