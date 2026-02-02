@@ -1,5 +1,5 @@
 #include "jogo.h"
-#include "items.h"  // NEW: Include for ItemsManager
+#include "items.h" 
 #include <iostream>
 
 Character::Character(int startX, int startY, int tile)
@@ -85,23 +85,17 @@ void Character::Update(const std::array<std::array<int, 20>, 15>& maze) {
     }
 }
 
-// ========== NEW FUNCTION ADDED ==========
+
 void Character::CollectItem(ItemsManager& itemsManager) {
     // Check if E key is pressed (triggered once per press)
     if (AEInputCheckTriggered(AEVK_E)) {
-        // Get character's world position
+
         float playerX = GetWorldX();
         float playerY = GetWorldY();
-
-        // Call the Update method which checks for collection
-        // We pass 0.0f for deltaTime since we're just checking collection
         itemsManager.Update(playerX, playerY, 0.0f);
-
-        std::cout << "Player attempted to collect item at position ("
-            << playerX << ", " << playerY << ")\n";
     }
 }
-// =========================================
+
 
 void Character::Draw() {
     if (!pMesh) return;

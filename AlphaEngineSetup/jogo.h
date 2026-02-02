@@ -36,8 +36,7 @@ public:
     int GetGridX() const { return gridX; }
     int GetGridY() const { return gridY; }
 
-    // ========== NEW CODE ADDED ==========
-    // Getters for world position (needed for item collection)
+    // Item Collection
     float GetWorldX() const { return static_cast<float>(gridX); }
     float GetWorldY() const { return static_cast<float>(gridY); }
 
