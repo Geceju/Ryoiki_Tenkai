@@ -109,6 +109,10 @@ void Level1_Update() {
 	}
     if (player) {
         player->Update(maze);
+
+		if (itemsManager) {
+			player->CollectItem(*itemsManager);
+		}
     }
 
 	// Press C to "collect" all items (simulate player at position 5,5)

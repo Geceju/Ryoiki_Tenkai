@@ -2,12 +2,14 @@
 #include "AEEngine.h"
 #include <array>
 
+class ItemsManager;
+
 class Character {
 private:
-    int gridX;           
-    int gridY;           
-    int tileSize;        
-    AEGfxVertexList* pMesh; 
+    int gridX;
+    int gridY;
+    int tileSize;
+    AEGfxVertexList* pMesh;
 
     // Movement timing
     float moveTimer;     // Timer to control movement speed
@@ -33,6 +35,15 @@ public:
     // Getters
     int GetGridX() const { return gridX; }
     int GetGridY() const { return gridY; }
+
+    // ========== NEW CODE ADDED ==========
+    // Getters for world position (needed for item collection)
+    float GetWorldX() const { return static_cast<float>(gridX); }
+    float GetWorldY() const { return static_cast<float>(gridY); }
+
+    // Function for item collection with E key
+    void CollectItem(ItemsManager& itemsManager);
+
 
     // Setters
     void SetPosition(int x, int y);

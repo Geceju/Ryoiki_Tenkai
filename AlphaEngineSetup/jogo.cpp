@@ -1,9 +1,10 @@
 #include "jogo.h"
+#include "items.h"  // NEW: Include for ItemsManager
 #include <iostream>
 
 Character::Character(int startX, int startY, int tile)
     : gridX(startX), gridY(startY), tileSize(tile), pMesh(nullptr),
-    moveTimer(0.0f), moveDelay(0.10f) {  
+    moveTimer(0.0f), moveDelay(0.10f) {
 }
 
 Character::~Character() {
@@ -58,20 +59,20 @@ void Character::Update(const std::array<std::array<int, 20>, 15>& maze) {
 
         // Check for key presses and calculate new position
         if (AEInputCheckCurr(AEVK_W) || AEInputCheckCurr(AEVK_UP)) {
-            newY += 1; 
+            newY += 1;
             moved = true;
         }
         else if (AEInputCheckCurr(AEVK_S) || AEInputCheckCurr(AEVK_DOWN)) {
-            newY -= 1; 
+            newY -= 1;
             moved = true;
         }
 
         if (AEInputCheckCurr(AEVK_A) || AEInputCheckCurr(AEVK_LEFT)) {
-            newX -= 1; 
+            newX -= 1;
             moved = true;
         }
         else if (AEInputCheckCurr(AEVK_D) || AEInputCheckCurr(AEVK_RIGHT)) {
-            newX += 1; 
+            newX += 1;
             moved = true;
         }
 
@@ -79,10 +80,28 @@ void Character::Update(const std::array<std::array<int, 20>, 15>& maze) {
         if (moved && IsValidPosition(newX, newY, maze)) {
             gridX = newX;
             gridY = newY;
-            moveTimer = 0.0f; 
+            moveTimer = 0.0f;
         }
     }
 }
+
+// ========== NEW FUNCTION ADDED ==========
+void Character::CollectItem(ItemsManager& itemsManager) {
+    // Check if E key is pressed (triggered once per press)
+    if (AEInputCheckTriggered(AEVK_E)) {
+        // Get character's world position
+        float playerX = GetWorldX();
+        float playerY = GetWorldY();
+
+        // Call the Update method which checks for collection
+        // We pass 0.0f for deltaTime since we're just checking collection
+        itemsManager.Update(playerX, playerY, 0.0f);
+
+        std::cout << "Player attempted to collect item at position ("
+            << playerX << ", " << playerY << ")\n";
+    }
+}
+// =========================================
 
 void Character::Draw() {
     if (!pMesh) return;
