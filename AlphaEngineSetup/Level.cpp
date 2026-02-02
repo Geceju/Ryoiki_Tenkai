@@ -3,6 +3,7 @@
 #include "Player.h"
 #include "GameStateManager.h"
 #include "Level1.h"
+#include "Tilesets.h" // [NEW] Include this to access the TilesetManager
 
 /** * DUNGEON DATA
  * Stores the rooms using unique_ptr to ensure that memory is automatically
@@ -15,18 +16,18 @@ static std::vector<std::unique_ptr<Room>> g_DungeonRooms;
 
     // g_pUnitSquare: The "Fill" data
     // Uses triangles to create a solid surface for colors and future tileset textures
-    static AEGfxVertexList* g_pUnitSquare = nullptr;
+static AEGfxVertexList* g_pUnitSquare = nullptr;
 
-    // g_pRectOutline: The "Display" border
-    // A clean, 4-sided loop that excludes internal triangle edges to prevent diagonal lines
-    static AEGfxVertexList* g_pRectOutline = nullptr;
+// g_pRectOutline: The "Display" border
+// A clean, 4-sided loop that excludes internal triangle edges to prevent diagonal lines
+static AEGfxVertexList* g_pRectOutline = nullptr;
 
 // END GEOMETRY DATA
 
 // ENTITY DATA
 // The player object maintains its own state, including position and discovery logic
 
-    static Player g_Player;
+static Player g_Player;
 
 // END ENTITY DATA
 
@@ -73,7 +74,6 @@ void Level_Init()
 
     // 4096 width, 4096 height, 256 room size
     g_DungeonRooms = generator.Generate(4096, 4096, 256);
-    //g_DungeonRooms = generator.Generate(4096, 4096, 80, 600);
 
     // Start the player at the center of the first room and reveal it immediately
     // Instead of spawning at index 0, search for the room the generator specifically tagged as the 'Start' room based on center-proximity
@@ -94,7 +94,7 @@ void Level_Init()
         g_Player.Init(startRoom->rect.GetCenter());
         startRoom->isDiscovered = true;
 
-		// Only reveals neighbours if the toggle (check top of this file) is enabled
+        // Only reveals neighbours if the toggle (check top of this file) is enabled
         if (g_RevealNeighbors)
         {
             for (auto* neighbor : startRoom->GetNeighbours()) {
@@ -148,7 +148,7 @@ void Level_Update()
                 }
             }
 
-			// For debugging: Toggle neighbor reveal with the N key
+            // For debugging: Toggle neighbor reveal with the N key
             if (AEInputCheckTriggered(AEVK_N))
             {
                 g_RevealNeighbors = !g_RevealNeighbors;
@@ -173,57 +173,73 @@ void Level_Update()
 
 void Level_Draw()
 {
-    // We set the background to black to emphasize the discovered dungeon rooms
+    // Set the background to black so the dungeon rooms stand out
     AEGfxSetBackgroundColor(0.0f, 0.0f, 0.0f);
     AEGfxSetRenderMode(AE_GFX_RM_COLOR);
 
-    // We iterate through all generated rooms to render their floors and walls
+    // Iterate through all generated rooms
     for (const auto& room : g_DungeonRooms)
     {
-        // If room not discovered, do not draw
+        // Optimization: Do not draw rooms the player hasn't found yet
         if (!room->isDiscovered)
         {
             continue;
         }
 
+        // [1] Retrieve the specific color data for this room's style
+        const TilesetData& style = TilesetManager::Get(room->tilesetID);
+
+        // Calculate Position and Scale
         AEVec2 center = room->rect.GetCenter();
         AEMtx33 scale, trans, transform;
 
-        // Use a tiny bias (1.01) for the floor triangles. 
-        // This causes rooms to overlap slightly, which prevents the background 
-        // from bleeding through the diagonal line where the two triangles meet
+        // --- DRAW PASS 1: THE FLOOR (Colored Tile) ---
+
+        // Use a tiny bias (1.01f) to make rooms overlap slightly. 
+        // This prevents hairline cracks/lines from appearing between connected rooms.
         float bias = 1.01f;
         AEMtx33Scale(&scale, (float)room->rect.width() * bias, (float)room->rect.height() * bias);
         AEMtx33Trans(&trans, center.x, center.y);
         AEMtx33Concat(&transform, &trans, &scale);
         AEGfxSetTransform(transform.m);
 
-        // Applies the room tint based on its gameplay type
+        // COLOR LOGIC: 
+        // 1. Boss Room = Always RED
+        // 2. Start Room = Always GREEN
+        // 3. Normal Room = Use the assigned Random Theme Color
         if (room->type == RoomType::Boss)
-            AEGfxSetColorToMultiply(0.7f, 0.1f, 0.1f, 1.0f);
+        {
+            AEGfxSetColorToMultiply(1.0f, 0.0f, 0.0f, 1.0f); // Bright Red
+        }
         else if (room->type == RoomType::Start)
-            AEGfxSetColorToMultiply(0.1f, 0.5f, 0.1f, 1.0f);
+        {
+            AEGfxSetColorToMultiply(0.0f, 1.0f, 0.0f, 1.0f); // Bright Green
+        }
         else
-            AEGfxSetColorToMultiply(0.3f, 0.3f, 0.3f, 1.0f);
+        {
+            // Apply the color defined in Tilesets.cpp
+            AEGfxSetColorToMultiply(style.r, style.g, style.b, 1.0f);
+        }
 
-        // DRAW PASS 1: The solid floor using the Triangle mesh
-        // Use the bias here to overlap slightly and hide triangle seams
+        // Draw the solid square mesh
         AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
 
-        // DRAW PASS 2: The clean outline
-        // Switches the mesh to g_pRectOutline and use NO bias
-        // Because g_pRectOutline has no internal vertices, the diagonal is gone
+
+        // --- DRAW PASS 2: THE WALLS (Black Outline) ---
+
+        // Reset scale to exact size (no bias) for the outline
         AEMtx33Scale(&scale, (float)room->rect.width(), (float)room->rect.height());
         AEMtx33Concat(&transform, &trans, &scale);
         AEGfxSetTransform(transform.m);
 
+        // Draw the outline in Black to visually separate the rooms
         AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 1.0f);
         AEGfxMeshDraw(g_pRectOutline, AE_GFX_MDM_LINES_STRIP);
     }
 
-    // --- THE BOUNDARY LOGIC ---sa
-    // Applies the same logic here where the outline mesh is used so the 4096x4096 
-    // world border doesn't have a giant white line cutting through the middle
+    // --- DRAW PASS 3: THE WORLD BOUNDARY ---
+
+    // Draw the 4096x4096 boundary so the player knows the limits of the world
     AEMtx33 bScale, bTrans, bTransform;
     AEMtx33Scale(&bScale, 4096.0f, 4096.0f);
     AEMtx33Trans(&bTrans, 0.0f, 0.0f);
@@ -231,13 +247,11 @@ void Level_Draw()
 
     AEGfxSetTransform(bTransform.m);
 
-    // Uses a semi-transparent white color for the boundary line
+    // Draw boundary as semi-transparent white
     AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 0.5f);
-
-    // Draw the clean outline mesh instead of the triangle mesh
     AEGfxMeshDraw(g_pRectOutline, AE_GFX_MDM_LINES_STRIP);
 
-    // Draws the player on top of everything
+    // --- DRAW PASS 4: THE PLAYER ---
     g_Player.Draw();
 }
 
@@ -257,7 +271,7 @@ void Level_Free()
 
     // Release the static vector's internal capacity to the OS immediately
     g_DungeonRooms.shrink_to_fit();
-    
+
     Level1_Free();
 }
 
