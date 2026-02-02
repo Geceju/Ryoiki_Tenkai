@@ -92,15 +92,6 @@ void Level1_Update() {
 		itemsManager->SpawnRandomItems(20, mazeVector);
 	}
 
-	// Press C to "collect" all items (simulate player at position 5,5)
-	if (AEInputCheckTriggered(AEVK_C)) {
-		float testPlayerX = 5.0f;
-		float testPlayerY = 5.0f;
-		itemsManager->Update(testPlayerX, testPlayerY, 0.016f);
-		std::cout << "Collected: " << itemsManager->GetCollectedCount()
-			<< " / " << itemsManager->GetTotalCount() << " items\n";
-	}
-
 	// Press ESC to quit
 	if (AEInputCheckTriggered(AEVK_ESCAPE)) {
 		gGameStateNext = GS_MAINMENU;
