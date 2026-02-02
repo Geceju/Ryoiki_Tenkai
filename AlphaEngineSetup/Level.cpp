@@ -1,109 +1,231 @@
 #include "Level.h"
 #include "RoomGenerator.h"
-#include "jogo.h"
+#include "jogo.h" 
 #include "GameStateManager.h"
-#include "Tilesets.h" // [NEW] Include this to access the TilesetManager
+#include "Tilesets.h" 
+#include <cstdio> 
+#include <cmath>  
+#include <queue> 
+#include <map>   
+#include <algorithm> 
 
-/** * DUNGEON DATA
- * Stores the rooms using unique_ptr to ensure that memory is automatically
- * reclaimed when the vector is cleared or the application closes
- */
+// Global variables for the level data
 static std::vector<std::unique_ptr<Room>> g_DungeonRooms;
 
-// GEOMETRY DATA (The "Data")
-// These pointers represent the raw vertex information stored on the GPU
-
-    // g_pUnitSquare: The "Fill" data
-    // Uses triangles to create a solid surface for colors and future tileset textures
+// Geometry pointers
 static AEGfxVertexList* g_pUnitSquare = nullptr;
-
-// g_pRectOutline: The "Display" border
-// A clean, 4-sided loop that excludes internal triangle edges to prevent diagonal lines
 static AEGfxVertexList* g_pRectOutline = nullptr;
 
-// END GEOMETRY DATA
-
-// ENTITY DATA
-// The player object maintains its own state, including position and discovery logic
-// Initializing with a tile size of 256 to match the dungeon generation
-
-    static Character g_Player(0, 0, 256.0f);
-
-// END ENTITY DATA
-
-// Set this to true to see neighbors, false to see only the current room
+// Character pointer allowing dynamic initialization
+static std::unique_ptr<Character> g_Character = nullptr;
 static bool g_RevealNeighbors = true;
 
-void Level_Load()
+// Wayfinder variables
+static Room* g_BossRoom = nullptr;
+static bool g_ShowWayfinder = false;
+
+// Font ID for text rendering
+static s8 g_FontId = -1;
+
+// Helper to draw a line segment between two points
+static void DrawLineSegment(float x1, float y1, float x2, float y2, float thickness, float r, float g, float b, float a)
 {
-    // THE SEAMLESS FLOOR MESH (Triangles)
-    // - Used for individual rooms
-    // - Proper UV mapping (0.0 to 1.0) prevents the GPU from showing the internal triangle split.
-    AEGfxMeshStart();
+    float dx = x2 - x1;
+    float dy = y2 - y1;
+    float dist = sqrtf(dx * dx + dy * dy);
+    float angle = atan2f(dy, dx);
+    float midX = (x1 + x2) / 2.0f;
+    float midY = (y1 + y2) / 2.0f;
 
-    AEGfxTriAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f,
-        0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
-        -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
-    AEGfxTriAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
-        0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f,
-        -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+    AEMtx33 scale, rot, trans, transform;
+    AEMtx33Scale(&scale, dist, thickness);
+    AEMtx33Rot(&rot, angle);
+    AEMtx33Trans(&trans, midX, midY);
 
-    g_pUnitSquare = AEGfxMeshEnd();
+    AEMtx33Concat(&transform, &rot, &scale);
+    AEMtx33Concat(&transform, &trans, &transform);
 
-    // THE CLEAN OUTLINE MESH (Line Strip)
-    // - Used for both the room borders AND the world boundary
-    // - By only using 5 vertices in a loop, we physically remove the diagonal.
-    AEGfxMeshStart();
-
-    AEGfxVertexAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f);   // BL
-    AEGfxVertexAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f);    // BR
-    AEGfxVertexAdd(0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f);     // TR
-    AEGfxVertexAdd(-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);    // TL
-    AEGfxVertexAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f);   // Close loop
-
-    g_pRectOutline = AEGfxMeshEnd();
-
-    // Initialize the player assets
-    g_Player.Load();
+    AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+    AEGfxSetColorToMultiply(r, g, b, a);
+    AEGfxSetTransform(transform.m);
+    AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
 }
 
+// Helper to find the sequence of rooms from start to end using BFS
+// Now checks for actual doors/openings in the tilemap
+static std::vector<AEVec2> GetPathToBoss(Room* startRoom, Room* targetRoom)
+{
+    std::vector<AEVec2> pathPoints;
+
+    // Validate inputs
+    if (!startRoom || !targetRoom)
+    {
+        return pathPoints;
+    }
+
+    // BFS initialization
+    std::queue<Room*> frontier;
+    frontier.push(startRoom);
+
+    // Map to track visited nodes and path history
+    std::map<Room*, Room*> cameFrom;
+    cameFrom[startRoom] = nullptr;
+
+    Room* current = nullptr;
+
+    // Run BFS loop
+    while (!frontier.empty())
+    {
+        current = frontier.front();
+        frontier.pop();
+
+        // Check if we reached the target
+        if (current == targetRoom)
+        {
+            break;
+        }
+
+        int midX = current->tileCountX / 2;
+        int midY = current->tileCountY / 2;
+        int w = current->tileCountX;
+        int h = current->tileCountY;
+
+        // Explore neighbors
+        for (Room* next : current->GetNeighbours())
+        {
+            // If neighbor has not been visited yet
+            if (cameFrom.find(next) == cameFrom.end())
+            {
+                // GEOMETRIC CHECK
+                // Even if rooms are next to each other we must check if a door exists
+                bool hasDoor = false;
+
+                AEVec2 currentCenter = current->rect.GetCenter();
+                AEVec2 nextCenter = next->rect.GetCenter();
+
+                // Check Top Neighbor
+                if (nextCenter.y > currentCenter.y)
+                {
+                    // Check top row middle tile
+                    if (current->tileMap[0][midX] == 0) hasDoor = true;
+                }
+                // Check Bottom Neighbor
+                else if (nextCenter.y < currentCenter.y)
+                {
+                    // Check bottom row middle tile
+                    if (current->tileMap[h - 1][midX] == 0) hasDoor = true;
+                }
+                // Check Right Neighbor
+                else if (nextCenter.x > currentCenter.x)
+                {
+                    // Check right column middle tile
+                    if (current->tileMap[midY][w - 1] == 0) hasDoor = true;
+                }
+                // Check Left Neighbor
+                else if (nextCenter.x < currentCenter.x)
+                {
+                    // Check left column middle tile
+                    if (current->tileMap[midY][0] == 0) hasDoor = true;
+                }
+
+                // Only add to queue if there is a valid path
+                if (hasDoor)
+                {
+                    frontier.push(next);
+                    cameFrom[next] = current;
+                }
+            }
+        }
+    }
+
+    // Reconstruct path if target found
+    if (current == targetRoom)
+    {
+        Room* step = targetRoom;
+        while (step != nullptr)
+        {
+            pathPoints.push_back(step->rect.GetCenter());
+            step = cameFrom[step];
+        }
+        // Path is built backwards so reverse it
+        std::reverse(pathPoints.begin(), pathPoints.end());
+    }
+
+    return pathPoints;
+}
+
+// Prepares GPU resources
+void Level_Load()
+{
+    _CrtSetBreakAlloc(278);
+
+    // Create unit square mesh for floors
+    AEGfxMeshStart();
+    AEGfxTriAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f, 0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+    AEGfxTriAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, 0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+    g_pUnitSquare = AEGfxMeshEnd();
+
+    // Create outline mesh for walls
+    AEGfxMeshStart();
+    AEGfxVertexAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f);
+    AEGfxVertexAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f);
+    AEGfxVertexAdd(0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f);
+    AEGfxVertexAdd(-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+    AEGfxVertexAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f);
+    g_pRectOutline = AEGfxMeshEnd();
+
+    // Load the custom font from the Assets folder
+    // Try "Assets/exo2-regular.ttf" first
+    g_FontId = AEGfxCreateFont("Assets/exo2-regular.ttf", 20);
+
+    // If that fails try just the filename in case the working directory is already inside Assets
+    if (g_FontId < 0)
+    {
+        g_FontId = AEGfxCreateFont("exo2-regular.ttf", 20);
+    }
+}
+
+// Generates the level and spawns the player
 void Level_Init()
 {
-    // Generator produces a centered dungeon layout based on our screen resolution
     RoomGenerator generator;
-
-    // 4096 width, 4096 height, 256 room size
+    // Generate the dungeon layout with 4096 size and 256 room size
     g_DungeonRooms = generator.Generate(4096, 4096, 256);
 
-    // Start the player at the center of the first room and reveal it immediately
-    // Instead of spawning at index 0, search for the room the generator specifically tagged as the 'Start' room based on center-proximity
+    // Reset pointers
     Room* startRoom = nullptr;
+    g_BossRoom = nullptr;
 
+    // Locate Start and Boss rooms
     for (const auto& room : g_DungeonRooms)
     {
         if (room->type == RoomType::Start)
         {
             startRoom = room.get();
-            break;
+        }
+        else if (room->type == RoomType::Boss)
+        {
+            g_BossRoom = room.get();
         }
     }
 
-    // If a start room was found, place the player at its center and reveal it
     if (startRoom)
     {
-        // Get the world-space center of the starting room
-        AEVec2 center = startRoom->rect.GetCenter();
+        // Calculate the tile size used by the rooms 
+        float tileSize = startRoom->rect.width() / 16.0f;
 
-        // Convert world-space coordinates to absolute grid units
-        // If the room center is at (-512, -512) and tileSize is 256, 
-        // the grid position should be (-2, -2).
-        int gX = static_cast<int>(floor(center.x / 256.0f));
-        int gY = static_cast<int>(floor(center.y / 256.0f));
+        // Convert the float center position to integer grid coordinates
+        int startGridX = static_cast<int>(startRoom->rect.GetCenter().x / tileSize);
+        int startGridY = static_cast<int>(startRoom->rect.GetCenter().y / tileSize);
 
-        g_Player.SetPosition(gX, gY);
+        // Initialize the character with the calculated grid coordinates
+        g_Character = std::make_unique<Character>(startGridX, startGridY, tileSize);
+        g_Character->Load();
+
+        // Reveal the start room immediately
         startRoom->isDiscovered = true;
 
-        // Only reveals neighbours if the toggle (check top of this file) is enabled
+        // Optionally reveal neighbors
         if (g_RevealNeighbors)
         {
             for (auto* neighbor : startRoom->GetNeighbours())
@@ -117,156 +239,193 @@ void Level_Init()
     }
 }
 
+// Updates game logic per frame
 void Level_Update()
 {
+    // Restart Level
     if (AEInputCheckTriggered(AEVK_R))
     {
         gGameStateNext = GS_RESTART;
     }
 
-    // Pass the actual dungeon rooms for proper collision detection
-    g_Player.Update(g_DungeonRooms);
-
-    // Sync camera and discovery logic
-    // Added half the tile size (128.0f) to match the centered player drawing logic
-    float worldPosX = (float)g_Player.GetGridX() * 256.0f + 128.0f;
-    float worldPosY = (float)g_Player.GetGridY() * 256.0f + 128.0f;
-
-    // Set camera position to the center of the current tile
-    AEGfxSetCamPosition(worldPosX, worldPosY);
-
-    // Discovery logic
-    float epsilon = 5.0f;
-    for (auto& room : g_DungeonRooms)
+    // Quit Game
+    if (AEInputCheckTriggered(AEVK_Q))
     {
-        if (worldPosX >= (room->rect.left - epsilon) &&
-            worldPosX <= (room->rect.right + epsilon) &&
-            worldPosY >= (room->rect.bottom - epsilon) &&
-            worldPosY <= (room->rect.top + epsilon))
-        {
-            room->isDiscovered = true;
-
-            if (g_RevealNeighbors)
-            {
-                for (auto* neighbor : room->GetNeighbours())
-                {
-                    if (neighbor)
-                    {
-                        neighbor->isDiscovered = true;
-                    }
-                }
-            }
-            break;
-        }
+        gGameStateNext = GS_QUIT;
     }
 
-    // For debugging: Toggle neighbor reveal with the N key
+    // Return to Main Menu
+    if (AEInputCheckTriggered(AEVK_ESCAPE))
+    {
+        gGameStateNext = GS_MAINMENU;
+    }
+
+    // Toggle Neighbor Reveal Debug
     if (AEInputCheckTriggered(AEVK_N))
     {
         g_RevealNeighbors = !g_RevealNeighbors;
         printf("Neighbor Reveal: %s\n", g_RevealNeighbors ? "ON" : "OFF");
     }
 
-    // Press Q to quit the game entirely
-    if (AEInputCheckTriggered(AEVK_Q))
+    // Toggle Boss Wayfinder
+    if (AEInputCheckTriggered(AEVK_M))
     {
-        gGameStateNext = GS_QUIT;
+        g_ShowWayfinder = !g_ShowWayfinder;
+        printf("Wayfinder: %s\n", g_ShowWayfinder ? "ON" : "OFF");
     }
 
-    // Press ESC to go back to Main Menu
-    if (AEInputCheckTriggered(AEVK_ESCAPE))
+    // Update the character logic passing the room list for collision
+    if (g_Character)
     {
-        gGameStateNext = GS_MAINMENU;
+        g_Character->Update(g_DungeonRooms);
+
+        // Update camera position to follow the character
+        AEGfxSetCamPosition(g_Character->GetWorldX(), g_Character->GetWorldY());
+
+        // Update neighbor discovery logic based on character world position
+        for (auto& room : g_DungeonRooms)
+        {
+            // Check if character is inside the room bounds
+            if (g_Character->GetWorldX() >= room->rect.left && g_Character->GetWorldX() <= room->rect.right &&
+                g_Character->GetWorldY() >= room->rect.bottom && g_Character->GetWorldY() <= room->rect.top)
+            {
+                room->isDiscovered = true;
+
+                if (g_RevealNeighbors)
+                {
+                    for (auto* neighbor : room->GetNeighbours())
+                    {
+                        if (neighbor)
+                        {
+                            neighbor->isDiscovered = true;
+                        }
+                    }
+                }
+                break;
+            }
+        }
     }
 }
 
+// Renders the scene
 void Level_Draw()
 {
-    // Set the background to black so the dungeon rooms stand out
     AEGfxSetBackgroundColor(0.0f, 0.0f, 0.0f);
     AEGfxSetRenderMode(AE_GFX_RM_COLOR);
 
-    // Iterate through all generated rooms
+    // Draw Rooms and Contents
     for (const auto& room : g_DungeonRooms)
     {
-        // Optimization: Do not draw rooms the player hasn't found yet
-        if (!room->isDiscovered)
-        {
-            continue;
-        }
+        // Skip hidden rooms
+        if (!room->isDiscovered) continue;
 
-        // [1] Retrieve the specific color data for this room's style
         const TilesetData& style = TilesetManager::Get(room->tilesetID);
 
-        // Calculate Position and Scale
-        AEVec2 center = room->rect.GetCenter();
+        // DRAW FLOOR
         AEMtx33 scale, trans, transform;
-
-        // --- DRAW PASS 1: THE FLOOR (Colored Tile) ---
-
-        // Use a tiny bias (1.01f) to make rooms overlap slightly. 
-        // This prevents hairline cracks/lines from appearing between connected rooms.
-        float bias = 1.01f;
-        AEMtx33Scale(&scale, (float)room->rect.width() * bias, (float)room->rect.height() * bias);
-        AEMtx33Trans(&trans, center.x, center.y);
+        AEMtx33Scale(&scale, (float)room->rect.width(), (float)room->rect.height());
+        AEMtx33Trans(&trans, room->rect.GetCenter().x, room->rect.GetCenter().y);
         AEMtx33Concat(&transform, &trans, &scale);
         AEGfxSetTransform(transform.m);
 
-        // COLOR LOGIC: 
-        // 1. Boss Room = Always RED
-        // 2. Start Room = Always GREEN
-        // 3. Normal Room = Use the assigned Random Theme Color
-        if (room->type == RoomType::Boss)
-        {
-            AEGfxSetColorToMultiply(1.0f, 0.0f, 0.0f, 1.0f); // Bright Red
-        }
-        else if (room->type == RoomType::Start)
-        {
-            AEGfxSetColorToMultiply(0.0f, 1.0f, 0.0f, 1.0f); // Bright Green
-        }
-        else
-        {
-            // Apply the color defined in Tilesets.cpp
-            AEGfxSetColorToMultiply(style.r, style.g, style.b, 1.0f);
-        }
+        // Set color based on room type
+        if (room->type == RoomType::Boss) AEGfxSetColorToMultiply(1.0f, 0.0f, 0.0f, 1.0f);
+        else if (room->type == RoomType::Start) AEGfxSetColorToMultiply(0.0f, 1.0f, 0.0f, 1.0f);
+        else AEGfxSetColorToMultiply(style.r, style.g, style.b, 1.0f);
 
-        // Draw the solid square mesh
         AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
 
-
-        // --- THE WALLS (Black Outline) ---
-
-        // Reset scale to exact size (no bias) for the outline
-        AEMtx33Scale(&scale, (float)room->rect.width(), (float)room->rect.height());
-        AEMtx33Concat(&transform, &trans, &scale);
-        AEGfxSetTransform(transform.m);
-
-        // Draw the outline in Black to visually separate the rooms
+        // DRAW WALLS
         AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 1.0f);
-        AEGfxMeshDraw(g_pRectOutline, AE_GFX_MDM_LINES_STRIP);
+
+        for (int y = 0; y < room->tileCountY; ++y)
+        {
+            for (int x = 0; x < room->tileCountX; ++x)
+            {
+                // If the tile is marked as 1 it is a wall
+                if (room->tileMap[y][x] == 1)
+                {
+                    // Calculate World Position of this specific tile
+                    float wx = room->rect.left + (x * room->tileSize) + (room->tileSize * 0.5f);
+                    float wy = room->rect.top - (y * room->tileSize) - (room->tileSize * 0.5f);
+
+                    AEMtx33Scale(&scale, room->tileSize, room->tileSize);
+                    AEMtx33Trans(&trans, wx, wy);
+                    AEMtx33Concat(&transform, &trans, &scale);
+
+                    AEGfxSetTransform(transform.m);
+                    AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
+                }
+            }
+        }
+
+        // DRAW LABEL FOR BOSS ROOM
+        if (room->type == RoomType::Boss)
+        {
+            float camX = g_Character ? g_Character->GetWorldX() : 0.0f;
+            float camY = g_Character ? g_Character->GetWorldY() : 0.0f;
+            float winW = (float)AEGfxGetWindowWidth();
+            float winH = (float)AEGfxGetWindowHeight();
+
+            float textX = (room->rect.GetCenter().x - camX) * 2.0f / winW;
+            float textY = (room->rect.GetCenter().y - camY) * 2.0f / winH;
+
+            if (g_FontId >= 0 && textX > -0.9f && textX < 0.9f && textY > -0.9f && textY < 0.9f)
+            {
+                char buffer[] = "EXIT";
+                AEGfxPrint(g_FontId, buffer, textX, textY, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+            }
+        }
     }
 
-    // --- THE WORLD BOUNDARY ---
+    // Draw Character
+    if (g_Character)
+    {
+        g_Character->Draw();
 
-    // Draw the 4096x4096 boundary so the player knows the limits of the world
-    AEMtx33 bScale, bTrans, bTransform;
-    AEMtx33Scale(&bScale, 4096.0f, 4096.0f);
-    AEMtx33Trans(&bTrans, 0.0f, 0.0f);
-    AEMtx33Concat(&bTransform, &bTrans, &bScale);
+        // Draw Wayfinder Path
+        if (g_ShowWayfinder && g_BossRoom)
+        {
+            // First locate which room the player is currently in
+            Room* playerRoom = nullptr;
+            float px = g_Character->GetWorldX();
+            float py = g_Character->GetWorldY();
 
-    AEGfxSetTransform(bTransform.m);
+            for (const auto& room : g_DungeonRooms)
+            {
+                if (px >= room->rect.left && px <= room->rect.right &&
+                    py >= room->rect.bottom && py <= room->rect.top)
+                {
+                    playerRoom = room.get();
+                    break;
+                }
+            }
 
-    // Draw boundary as semi-transparent white
-    AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 0.5f);
-    AEGfxMeshDraw(g_pRectOutline, AE_GFX_MDM_LINES_STRIP);
+            // Calculate path if player is inside a room
+            if (playerRoom)
+            {
+                std::vector<AEVec2> path = GetPathToBoss(playerRoom, g_BossRoom);
 
-    // --- THE PLAYER ---
-    g_Player.Draw();
+                // Draw path segments
+                if (!path.empty())
+                {
+                    // Draw line from player to first room center
+                    DrawLineSegment(px, py, path[0].x, path[0].y, 5.0f, 1.0f, 1.0f, 0.0f, 0.5f);
+
+                    // Draw connections between subsequent room centers
+                    for (size_t i = 0; i < path.size() - 1; ++i)
+                    {
+                        DrawLineSegment(path[i].x, path[i].y, path[i + 1].x, path[i + 1].y, 5.0f, 1.0f, 1.0f, 0.0f, 0.5f);
+                    }
+                }
+            }
+        }
+    }
 }
 
+// Cleans up memory
 void Level_Free()
 {
-    // Clear neighbor pointers first to break circular dependencies and allow deletion
     for (auto& room : g_DungeonRooms)
     {
         if (room)
@@ -274,30 +433,21 @@ void Level_Free()
             room->ClearNeighbours();
         }
     }
-
-    // Delete all Room objects now that connections are severed
     g_DungeonRooms.clear();
-
-    // Release the static vector's internal capacity to the OS immediately
     g_DungeonRooms.shrink_to_fit();
+
+    g_Character = nullptr;
+    g_BossRoom = nullptr;
 }
 
+// Unloads GPU meshes
 void Level_Unload()
 {
-    // Releases the 'Fill' data (triangles) from the GPU
-    if (g_pUnitSquare)
-    {
-        AEGfxMeshFree(g_pUnitSquare);
-        g_pUnitSquare = nullptr;
-    }
+    if (g_pUnitSquare) { AEGfxMeshFree(g_pUnitSquare); g_pUnitSquare = nullptr; }
+    if (g_pRectOutline) { AEGfxMeshFree(g_pRectOutline); g_pRectOutline = nullptr; }
 
-    // Releases the 'Outline' data (loop) from the GPU
-    if (g_pRectOutline)
-    {
-        AEGfxMeshFree(g_pRectOutline);
-        g_pRectOutline = nullptr;
+    if (g_FontId >= 0) {
+        AEGfxDestroyFont(g_FontId);
+        g_FontId = -1;
     }
-
-    // Release any textures or allocated data inside the player class
-    g_Player.Unload();
 }
