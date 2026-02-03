@@ -5,7 +5,7 @@
 #include "AEEngine.h"
 #include <vector>
 
-// 1. The Menu of Styles (Numeric/Generic)
+// The menu of styles (Numeric/Generic)
 enum class TilesetType {
     Type_01,      // Grey (Standard)
     Type_02,      // Red
@@ -14,7 +14,7 @@ enum class TilesetType {
     COUNT         // Helper to count how many we have
 };
 
-// 2. The Data for a single style (Color)
+// The Data for a single style (Color)
 struct TilesetData {
     float r, g, b; // Red, Green, Blue (0.0 to 1.0)
 };
