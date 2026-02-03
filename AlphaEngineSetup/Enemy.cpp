@@ -3,7 +3,7 @@
 
 SimpleEnemy::SimpleEnemy()
     : worldX(0), worldY(0), startX(0), startY(0),
-    speed(200.0f), detectionRange(500.0f), giveUpRange(900.0f),
+    speed(200.0f), detectionRange(500.0f), giveUpRange(150.0f),
     currentState(EnemyState::IDLE), pMesh(nullptr)
 {
 }
@@ -135,7 +135,7 @@ void SimpleEnemy::Draw()
         AEGfxSetColorToMultiply(1.0f, 1.0f, 0.0f, 1.0f); // Yellow (Confused/Returning)
 
     AEMtx33 scale, trans, transform;
-    AEMtx33Scale(&scale, 150.0f, 150.0f);
+    AEMtx33Scale(&scale, 25.0f, 25.0f);
     AEMtx33Trans(&trans, worldX, worldY);
     AEMtx33Concat(&transform, &trans, &scale);
 

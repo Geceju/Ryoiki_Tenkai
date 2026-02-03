@@ -374,10 +374,14 @@ void Level_Update()
         }
     }
 
+
     // Update items with player's WORLD position
 	float playerWorldX = static_cast<float>(g_Character->GetWorldX()) * 256.0f + 128.0f;
 	float playerWorldY = static_cast<float>(g_Character->GetWorldY()) * 256.0f + 128.0f;
+    float dt = (float)AEFrameRateControllerGetFrameTime();
 
+    // Call the function from the new file
+    g_Enemy.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), dt, g_DungeonRooms);
 	g_ItemsManager.Update(playerWorldX, playerWorldY, 0.0f);
 
 	// Debug: Show item count when 'I' is pressed
