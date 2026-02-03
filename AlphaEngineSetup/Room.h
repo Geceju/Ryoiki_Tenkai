@@ -1,35 +1,67 @@
-#ifndef ROOM_H
-#define ROOM_H
+#pragma once
+#ifndef ROOM_HPP
+#define ROOM_HPP
 
-#include "AEEngine.h"
+#include "utils.h" 
 #include <vector>
-#include "Utils.h" // Pulls the Rect definition from Utils.h
+#include "Tilesets.h" 
 
-// Room types used for gameplay logic and visual tinting
-enum class RoomType
-{
-    Normal,
-    Start,
-    Boss
-};
+enum class RoomType { Normal, Boss, Start };
 
+// Represents a single area in the dungeon
+// Stores the tile map for collision detection
 class Room
 {
 public:
-    // Initializes the room with geometry and default status
-    Room(Rect r) : rect(r), type(RoomType::Normal), isDiscovered(false) {}
+    // The physical boundary of the room
+    Rect rect;
 
-    Rect rect;              // Boundary coordinates defining the edges
-    RoomType type;          // Normal, Start, or Boss
-    bool isDiscovered;      // Logic for fog of war
+    // Type determines gameplay behavior like Boss or Start
+    RoomType type;
 
-    // Connection management for neighbor discovery logic
-    void AddNeighbour(Room* neighbour) { neighbours.push_back(neighbour); }
-    const std::vector<Room*>& GetNeighbours() const { return neighbours; }
-    void ClearNeighbours() { neighbours.clear(); }
+    // Tracks if the player has entered this room
+    bool isDiscovered;
+
+    // Visual theme identifier for color selection
+    TilesetType tilesetID;
+
+    // The Tile Map for this specific room
+    // 0 represents floor and 1 represents wall
+    std::vector<std::vector<int>> tileMap;
+
+    // Grid dimensions for the internal tile map
+    int tileCountX;
+    int tileCountY;
+    float tileSize;
+
+    // Constructor declaration
+    Room(Rect area);
+
+    // Destructor declaration
+    ~Room();
+
+    // Adds a connection to another room
+    void AddNeighbour(Room* neighbour);
+
+    // Returns the list of connected rooms
+    const std::vector<Room*>& GetNeighbours() const;
+
+    // Checks if a specific room is already a neighbor
+    bool IsNeighbour(Room* other);
+
+    // Clears all connections to release memory
+    void ClearNeighbours();
+
+    // Calculates the overlap with another room
+    Rect Intersect(Room* other);
+
+    // Helper to check collision
+    // Return 1 for wall and 0 for floor
+    int GetTile(int x, int y);
 
 private:
-    std::vector<Room*> neighbours; // List of rooms touching this one
+    // Internal storage for connected rooms
+    std::vector<Room*> m_neighbours;
 };
 
 #endif

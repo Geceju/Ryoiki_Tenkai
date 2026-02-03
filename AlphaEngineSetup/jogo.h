@@ -1,5 +1,5 @@
-#ifndef CHARACTER_H
-#define CHARACTER_H
+#ifndef JOGO_H
+#define JOGO_H
 
 #include "AEEngine.h"
 #include <vector>
@@ -8,44 +8,59 @@
 
 class ItemsManager;
 
+// Handles player movement collision and rendering
 class Character
 {
 public:
+    // Constructor taking grid coordinates and tile size
     Character(int startX, int startY, float tile);
+
+    // Destructor to clean up resources
     ~Character();
 
+    // Create the player mesh
     void Load();
+
+    // Release the player mesh
     void Unload();
 
     // Core loop functions
+    // Update logic accepts room list for tile collision checking
     void Update(const std::vector<std::unique_ptr<Room>>& rooms);
+
+    // Renders the player mesh
     void Draw();
 
-    // Getters and Setters
+    // Set position directly using grid coordinates
     void SetPosition(int x, int y);
+
+    // Getters for position
     int GetGridX() const { return gridX; }
     int GetGridY() const { return gridY; }
     float GetWorldX() const { return worldX; }
     float GetWorldY() const { return worldY; }
 
+    // Logic for item interaction
     void CollectItem(ItemsManager& itemsManager);
 
 private:
-    // Helper for free-roam collision detection
-    bool IsPointInsideAnyRoom(float x, float y, const std::vector<std::unique_ptr<Room>>& rooms);
+    // Checks specific tile value at coordinates
+    // Return true only if the tile is 0 meaning Floor
+    bool IsPositionWalkable(float x, float y, const std::vector<std::unique_ptr<Room>>& rooms);
 
     // Grid tracking
     int gridX;
     int gridY;
     float tileSize;
 
-    // Animation and Movement
-    float worldX;       // Visual X position in world space
-    float worldY;       // Visual Y position in world space
-    float moveSpeed;    // Pixels per second
-    float moveTimer;    // Drives the sine-wave walking animation
-    bool isMoving;      // Tracks if the player is currently providing input
+    // Animation and Movement variables
+    float worldX;
+    float worldY;
+    float moveSpeed;
+    float moveTimer;
+    bool isMoving;
 
+    // Visual mesh
     AEGfxVertexList* pMesh;
 };
 
