@@ -29,7 +29,6 @@
     <ClInclude Include="Level.h" />
     <ClInclude Include="Items.h" />
     <ClInclude Include="jogo.h" />
-    <ClInclude Include="Level1.h" />
     <ClInclude Include="MainMenu.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="Room.h" />
