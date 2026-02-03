@@ -5,7 +5,7 @@
 #include "Enemy.h"
 #include "Items.h"
 
-static SimpleEnemy g_Enemy;
+
 // items manager static variables
 static ItemsManager g_ItemsManager;
 static bool g_ItemsInitialized = false;
@@ -37,6 +37,7 @@ static Character g_Player(0, 0, 256.0f);
 
 // END ENTITY DATA
 
+static SimpleEnemy g_Enemy;
 // Set this to true to see neighbors, false to see only the current room
 static bool g_RevealNeighbors = true;
 
@@ -326,7 +327,8 @@ void Level_Draw()
 
 	// Draw the clean outline mesh instead of the triangle mesh
 	AEGfxMeshDraw(g_pRectOutline, AE_GFX_MDM_LINES_STRIP);
-
+	AEGfxVertexList* itemMesh = g_ItemsManager.GetItemMesh();
+	if (itemMesh){
 		const auto& allItems = g_ItemsManager.GetItems();
 
 		// Save current render mode and color state
@@ -362,13 +364,13 @@ void Level_Draw()
 			}
 		}
 	
-
+	}
 	// Draws the player
     g_Player.Draw();
     // Makes sure enemy above player so can see collision
     g_Enemy.Draw();
 }
-
+void Level_Free()
 {
 	// Clear neighbor pointers first to break circular dependencies and allow deletion
 	for (auto& room : g_DungeonRooms)
