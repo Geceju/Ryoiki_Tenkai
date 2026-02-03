@@ -11,6 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Enemy.cpp" />
     <ClCompile Include="GameStateManager.cpp" />
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="Items.cpp" />
@@ -22,6 +23,7 @@
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Enemy.h" />
     <ClInclude Include="GameStateManager.h" />
     <ClInclude Include="IGenerator.h" />
     <ClInclude Include="Level.h" />

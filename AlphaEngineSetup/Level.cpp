@@ -2,7 +2,8 @@
 #include "RoomGenerator.h"
 #include "jogo.h"
 #include "GameStateManager.h"
-
+#include "Enemy.h"
+static SimpleEnemy g_Enemy;
 /** * DUNGEON DATA
  * Stores the rooms using unique_ptr to ensure that memory is automatically
  * reclaimed when the vector is cleared or the application closes
@@ -64,6 +65,9 @@ void Level_Load()
 
     // Initialize the player assets
     g_Player.Load();
+
+    // Enemy load
+    g_Enemy.Load();
 }
 
 void Level_Init()
@@ -114,6 +118,16 @@ void Level_Init()
             }
         }
     }
+
+    for (const auto& room : g_DungeonRooms)
+    {
+        if (room->type == RoomType::Boss)
+        {
+            AEVec2 center = room->rect.GetCenter();
+            g_Enemy.SetPosition(center.x, center.y);
+            break;
+        }
+    }
 }
 
 void Level_Update()
@@ -125,7 +139,10 @@ void Level_Update()
 
     // Pass the actual dungeon rooms for proper collision detection
     g_Player.Update(g_DungeonRooms);
+    float dt = (float)AEFrameRateControllerGetFrameTime();
 
+    // Call the function from the new file
+    g_Enemy.Update(g_Player.GetWorldX(), g_Player.GetWorldY(), dt, g_DungeonRooms);
     // Sync camera and discovery logic
     // Added half the tile size (128.0f) to match the centered player drawing logic
     float worldPosX = (float)g_Player.GetGridX() * 256.0f + 128.0f;
@@ -249,8 +266,10 @@ void Level_Draw()
     // Draw the clean outline mesh instead of the triangle mesh
     AEGfxMeshDraw(g_pRectOutline, AE_GFX_MDM_LINES_STRIP);
 
-    // Draws the player on top of everything
+    // Draws the player
     g_Player.Draw();
+    // Makes sure enemy above player so can see collision
+    g_Enemy.Draw();
 }
 
 void Level_Free()
@@ -289,4 +308,6 @@ void Level_Unload()
 
     // Release any textures or allocated data inside the player class
     g_Player.Unload();
+
+    g_Enemy.Unload();
 }
