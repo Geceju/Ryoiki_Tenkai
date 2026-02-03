@@ -22,14 +22,6 @@ static std::vector<std::unique_ptr<Room>> g_DungeonRooms;
 static AEGfxVertexList* g_pUnitSquare = nullptr;
 static AEGfxVertexList* g_pRectOutline = nullptr;
 
-	// g_pUnitSquare: The "Fill" data
-	// Uses triangles to create a solid surface for colors and future tileset textures
-static AEGfxVertexList* g_pUnitSquare = nullptr;
-
-// g_pRectOutline: The "Display" border
-// A clean, 4-sided loop that excludes internal triangle edges to prevent diagonal lines
-static AEGfxVertexList* g_pRectOutline = nullptr;
-
 // END GEOMETRY DATA
 
 // ENTITY DATA
@@ -203,9 +195,6 @@ void Level_Load()
     {
         g_FontId = AEGfxCreateFont("exo2-regular.ttf", 20);
     }
-
-    // Initialize the player assets
-    g_Player.Load();
 
     // Enemy load
     g_Enemy.Load();
@@ -386,8 +375,8 @@ void Level_Update()
     }
 
     // Update items with player's WORLD position
-	float playerWorldX = static_cast<float>(g_Player.GetGridX()) * 256.0f + 128.0f;
-	float playerWorldY = static_cast<float>(g_Player.GetGridY()) * 256.0f + 128.0f;
+	float playerWorldX = static_cast<float>(g_Character->GetWorldX()) * 256.0f + 128.0f;
+	float playerWorldY = static_cast<float>(g_Character->GetWorldY()) * 256.0f + 128.0f;
 
 	g_ItemsManager.Update(playerWorldX, playerWorldY, 0.0f);
 
@@ -593,7 +582,6 @@ void Level_Unload()
     }
 
     // Release any textures or allocated data inside the player class
-    g_Player.Unload();
 
     g_Enemy.Unload();
 }
