@@ -1,3 +1,4 @@
+// items.h - Add InitializeGraphics method
 #pragma once
 #include "AEEngine.h"
 #include <vector>
@@ -44,6 +45,9 @@ public:
 	// Initialize the items system
 	void Initialize(int gridWidth, int gridHeight, const std::vector<std::vector<int>>& maze, float tileSize = 48.0f);
 
+	// Initialize graphics (call this AFTER engine is initialized)
+	void InitializeGraphics(); // ADD THIS
+
 	// Spawn a specific item
 	void SpawnItem(float x, float y, ItemType type);
 
@@ -68,6 +72,9 @@ public:
 	// Get reference to items (for external processing)
 	std::vector<Item>& GetItems() { return items; }
 	const std::vector<Item>& GetItems() const { return items; }
+
+	// Get item mesh
+	AEGfxVertexList* GetItemMesh() const { return pItemMesh; }
 
 	// Check if all items are collected
 	bool AllItemsCollected() const;
