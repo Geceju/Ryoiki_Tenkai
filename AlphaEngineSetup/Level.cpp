@@ -2,12 +2,18 @@
 #include "RoomGenerator.h"
 #include "jogo.h" 
 #include "GameStateManager.h"
+#include "Enemy.h"
+#include "Items.h"
 #include "Tilesets.h" 
 #include <cstdio> 
 #include <cmath>  
 #include <queue> 
 #include <map>   
 #include <algorithm> 
+
+// items manager static variables
+static ItemsManager g_ItemsManager;
+static bool g_ItemsInitialized = false;
 
 // Global variables for the level data
 static std::vector<std::unique_ptr<Room>> g_DungeonRooms;
@@ -16,8 +22,18 @@ static std::vector<std::unique_ptr<Room>> g_DungeonRooms;
 static AEGfxVertexList* g_pUnitSquare = nullptr;
 static AEGfxVertexList* g_pRectOutline = nullptr;
 
-// Character pointer allowing dynamic initialization
+// END GEOMETRY DATA
+
+// ENTITY DATA
+// The player object maintains its own state, including position and discovery logic
+// Initializing with a tile size of 256 to match the dungeon generation
+
 static std::unique_ptr<Character> g_Character = nullptr;
+
+// END ENTITY DATA
+
+static SimpleEnemy g_Enemy;
+// Set this to true to see neighbors, false to see only the current room
 static bool g_RevealNeighbors = true;
 
 // Wayfinder variables
@@ -174,15 +190,17 @@ void Level_Load()
     AEGfxVertexAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f);
     g_pRectOutline = AEGfxMeshEnd();
 
-    // Load the custom font from the Assets folder
-    // Try "Assets/exo2-regular.ttf" first
-    g_FontId = AEGfxCreateFont("Assets/exo2-regular.ttf", 20);
-
     // If that fails try just the filename in case the working directory is already inside Assets
     if (g_FontId < 0)
     {
         g_FontId = AEGfxCreateFont("exo2-regular.ttf", 20);
     }
+
+    // Enemy load
+    g_Enemy.Load();
+
+	// Initialize items graphics (AFTER engine is ready)
+	g_ItemsManager.InitializeGraphics();
 }
 
 // Generates the level and spawns the player
@@ -237,6 +255,56 @@ void Level_Init()
             }
         }
     }
+
+    // Spawn Items
+	if (!g_ItemsInitialized)
+	{
+		for (const auto& room : g_DungeonRooms)
+		{
+			AEVec2 center = room->rect.GetCenter();
+
+			// Skip if too close to start or boss room
+			if (room->type == RoomType::Start || room->type == RoomType::Boss)
+				continue;
+
+			// Random chance to spawn item (60% chance per room)
+			if (std::rand() % 100 < 30)
+			{
+				// Random item type
+				int randomType = std::rand() % 3;
+				ItemType type = static_cast<ItemType>(randomType);
+
+				// Spawn at room center
+				g_ItemsManager.SpawnItem(center.x, center.y, type);
+			}
+		}
+
+		for (int i = 0; i < 20; ++i)
+		{
+			if (!g_DungeonRooms.empty())
+			{
+				int roomIndex = std::rand() % g_DungeonRooms.size();
+				auto& room = g_DungeonRooms[roomIndex];
+
+				if (room->type == RoomType::Normal) // Only normal rooms
+				{
+					AEVec2 center = room->rect.GetCenter();
+
+					// Random offset within room (avoid edges)
+					float offsetX = (std::rand() % 100 - 50) * 2.0f; // �100 pixels
+					float offsetY = (std::rand() % 100 - 50) * 2.0f;
+
+					int randomType = std::rand() % 3;
+					ItemType type = static_cast<ItemType>(randomType);
+
+					g_ItemsManager.SpawnItem(center.x + offsetX, center.y + offsetY, type);
+				}
+			}
+		}
+
+		g_ItemsInitialized = true;
+		printf("Spawned %d items in world coordinates\n", g_ItemsManager.GetTotalCount());
+	}
 }
 
 // Updates game logic per frame
@@ -305,6 +373,28 @@ void Level_Update()
             }
         }
     }
+
+
+    // Update items with player's WORLD position
+	float playerWorldX = static_cast<float>(g_Character->GetWorldX()) * 256.0f + 128.0f;
+	float playerWorldY = static_cast<float>(g_Character->GetWorldY()) * 256.0f + 128.0f;
+    float dt = (float)AEFrameRateControllerGetFrameTime();
+
+    // Call the function from the new file
+    g_Enemy.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), dt, g_DungeonRooms);
+	g_ItemsManager.Update(playerWorldX, playerWorldY, 0.0f);
+
+	// Debug: Show item count when 'I' is pressed
+	if (AEInputCheckTriggered(AEVK_I))
+	{
+		printf("Items collected: %d/%d\n",
+			g_ItemsManager.GetCollectedCount(),
+			g_ItemsManager.GetTotalCount());
+
+		// Debug: Print positions of all uncollected items
+		printf("Uncollected items at positions:\n");
+		// You might need to add a method to ItemsManager to iterate items
+	}
 }
 
 // Renders the scene
@@ -377,7 +467,45 @@ void Level_Draw()
             }
         }
     }
+    //draw item
+    AEGfxVertexList* itemMesh = g_ItemsManager.GetItemMesh();
+	if (itemMesh){
+		const auto& allItems = g_ItemsManager.GetItems();
 
+		// Save current render mode and color state
+		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+
+		for (const auto& item : allItems) {
+			if (item.collected || !item.active) continue;
+
+			// Check if item is in any discovered room
+			bool shouldDraw = false;
+			for (const auto& room : g_DungeonRooms) {
+				if (room->isDiscovered) {
+					// Check if item is inside this discovered room
+					if (item.x >= room->rect.left && item.x <= room->rect.right &&
+						item.y >= room->rect.bottom && item.y <= room->rect.top) {
+						shouldDraw = true;
+						break;
+					}
+				}
+			}
+
+			if (shouldDraw) {
+				// Draw item at its position
+				AEMtx33 scale, trans, transform;
+				AEMtx33Scale(&scale, 48.0f * item.radius * 2.0f, 48.0f * item.radius * 2.0f);
+				AEMtx33Trans(&trans, item.x, item.y);
+				AEMtx33Concat(&transform, &trans, &scale);
+
+				AEGfxSetColorToMultiply(item.color[0], item.color[1],
+					item.color[2], item.color[3]);
+				AEGfxSetTransform(transform.m);
+				AEGfxMeshDraw(itemMesh, AE_GFX_MDM_TRIANGLES);
+			}
+		}
+	
+	}
     // Draw Character
     if (g_Character)
     {
@@ -421,6 +549,9 @@ void Level_Draw()
             }
         }
     }
+
+    g_Enemy.Draw();
+    
 }
 
 // Cleans up memory
@@ -438,16 +569,23 @@ void Level_Free()
 
     g_Character = nullptr;
     g_BossRoom = nullptr;
+
+    // Reset items
+	g_ItemsInitialized = false;
 }
 
 // Unloads GPU meshes
 void Level_Unload()
 {
-    if (g_pUnitSquare) { AEGfxMeshFree(g_pUnitSquare); g_pUnitSquare = nullptr; }
+	if (g_pUnitSquare) { AEGfxMeshFree(g_pUnitSquare); g_pUnitSquare = nullptr; }
     if (g_pRectOutline) { AEGfxMeshFree(g_pRectOutline); g_pRectOutline = nullptr; }
 
     if (g_FontId >= 0) {
         AEGfxDestroyFont(g_FontId);
         g_FontId = -1;
     }
+
+    // Release any textures or allocated data inside the player class
+
+    g_Enemy.Unload();
 }

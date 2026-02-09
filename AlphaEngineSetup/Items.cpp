@@ -1,3 +1,4 @@
+// items.cpp
 #include "items.h"
 #include <algorithm>
 #include <cstdlib>
@@ -35,6 +36,7 @@ Item::Item(float posX, float posY, ItemType itemType)
 		break;
 	}
 }
+
 // Check if player collected this item
 bool Item::CheckCollection(float playerX, float playerY) const {
 	if (collected || !active) return false;
@@ -45,18 +47,14 @@ bool Item::CheckCollection(float playerX, float playerY) const {
 
 	return distanceSquared <= (radius * radius);
 }
+
 // Draw the item
-/*
- * Coordinate System:
- * - World/Grid: Tile-based coordinates (e.g., (1.0, 2.0) = tile at row 2, column 1)
- * - Screen: Pixels, with (0,0) at window center
- * - Tile size: 48 pixels
- */
 void Item::Draw(AEGfxVertexList* pMesh) const {
 	if (collected || !active) return;
-	// convert tile coordinates to screen coordinates
-	float drawX = (x * 48.0f) - (f32)AEGfxGetWindowWidth() / 2.0f + (48.0f / 2.0f);
-	float drawY = (y * 48.0f) - (f32)AEGfxGetWindowHeight() / 2.0f + (48.0f / 2.0f);
+
+	// Use world coordinates
+	float drawX = x;
+	float drawY = y;
 
 	AEMtx33 scale, trans, transform;
 	AEMtx33Scale(&scale, 48.0f * radius * 2.0f, 48.0f * radius * 2.0f);
@@ -65,25 +63,29 @@ void Item::Draw(AEGfxVertexList* pMesh) const {
 
 	// Use COLOR mode
 	AEGfxSetRenderMode(AE_GFX_RM_COLOR);
-
-	// For walls: Use BlendColor
-	// For items: Use ColorToMultiply (different system)
 	AEGfxSetColorToMultiply(color[0], color[1], color[2], color[3]);
-
 	AEGfxSetTransform(transform.m);
 	AEGfxMeshDraw(pMesh, AE_GFX_MDM_TRIANGLES);
 }
+
 // ItemsManager implementation
 ItemsManager::ItemsManager() : tileSize(48), pItemMesh(nullptr) {
 	std::srand(static_cast<unsigned>(std::time(nullptr)));
-	CreateItemMesh();
 }
+
+
+void ItemsManager::InitializeGraphics() {
+	if (!pItemMesh) {
+		CreateItemMesh();
+	}
+}
+
 // Destructor
 ItemsManager::~ItemsManager() {
 	// 1. Explicitly clear the vector to call destructors on all 'Item' objects
 	items.clear();
 
-	// 2. Force the vector to release its internal capacity (the 12/16 byte leaks!)
+	// 2. Force the vector to release its internal capacity
 	items.shrink_to_fit();
 
 	// 3. Free the GPU mesh
@@ -92,9 +94,10 @@ ItemsManager::~ItemsManager() {
 		pItemMesh = nullptr;
 	}
 }
+
 // Create item mesh
 void ItemsManager::CreateItemMesh() {
-	// Create a SIMPLE square mesh for items (easier to debug)
+	// Create a SIMPLE square mesh for items
 	AEGfxMeshStart();
 
 	// Simple 1x1 square with WHITE vertices
@@ -110,17 +113,22 @@ void ItemsManager::CreateItemMesh() {
 	);
 
 	pItemMesh = AEGfxMeshEnd();
-
-	std::cout << "Created simple square mesh for items (3 types only)\n";
 }
+
 // Initialize the items system
 void ItemsManager::Initialize(int gridWidth, int gridHeight,
 	const std::vector<std::vector<int>>& maze, float tileSize) {
 	this->tileSize = tileSize;
 	items.clear();
 }
+
 // Spawn a specific item
 void ItemsManager::SpawnItem(float x, float y, ItemType type) {
+	// Ensure mesh is created before spawning
+	if (!pItemMesh) {
+		CreateItemMesh();
+	}
+
 	items.emplace_back(x, y, type);
 
 	// Debug output
@@ -128,6 +136,7 @@ void ItemsManager::SpawnItem(float x, float y, ItemType type) {
 	std::cout << "Spawned " << typeNames[static_cast<int>(type)]
 		<< " at position (" << x << ", " << y << ")\n";
 }
+
 // Helper function to find empty tile
 bool ItemsManager::IsTileEmpty(int x, int y, const std::vector<std::vector<int>>& maze) const {
 	// Check bounds
@@ -149,6 +158,7 @@ bool ItemsManager::IsTileEmpty(int x, int y, const std::vector<std::vector<int>>
 
 	return true;
 }
+
 // Spawn items randomly in the maze
 void ItemsManager::SpawnRandomItems(int count, const std::vector<std::vector<int>>& maze) {
 	int spawned = 0;
@@ -170,6 +180,7 @@ void ItemsManager::SpawnRandomItems(int count, const std::vector<std::vector<int
 
 	std::cout << "SpawnRandomItems: " << spawned << " items spawned\n";
 }
+
 // Update items (check collection, handle lifetime)
 void ItemsManager::Update(float playerX, float playerY, float deltaTime) {
 	for (auto& item : items) {
@@ -182,21 +193,28 @@ void ItemsManager::Update(float playerX, float playerY, float deltaTime) {
 		}
 	}
 }
+
 // Draw all items
 void ItemsManager::Draw() const {
+	// Don't draw if mesh isn't created yet
+	if (!pItemMesh) return;
+
 	for (const auto& item : items) {
 		item.Draw(pItemMesh);
 	}
 }
+
 // Get collected items count
 int ItemsManager::GetCollectedCount() const {
 	return static_cast<int>(std::count_if(items.begin(), items.end(),
 		[](const Item& item) { return item.collected; }));
 }
+
 // Get total items count
 int ItemsManager::GetTotalCount() const {
 	return static_cast<int>(items.size());
 }
+
 // Reset all items
 void ItemsManager::Reset() {
 	for (auto& item : items) {
@@ -205,6 +223,7 @@ void ItemsManager::Reset() {
 	}
 	std::cout << "All items reset\n";
 }
+
 // Check if all items are collected
 bool ItemsManager::AllItemsCollected() const {
 	return GetCollectedCount() == GetTotalCount() && GetTotalCount() > 0;
