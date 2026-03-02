@@ -8,8 +8,10 @@
 // Item constructor - ONLY 3 TYPES
 Item::Item(float posX, float posY, ItemType itemType)
 	: x(posX), y(posY), type(itemType), collected(false),
-	radius(0.4f), lifetime(-1.0f), active(true),
-	color{ 0.0f, 0.0f, 0.0f, 1.0f } { // default initialize to opaque black
+	visualRadius(0.20f),        // Small visual size (looks like a dot)
+	collisionRadius(30.0f),      // Large pickup range (easy to collect)
+	lifetime(-1.0f), active(true),
+	color{ 0.0f, 0.0f, 0.0f, 1.0f } {
 
 	// Set color based on item type - ONLY 3 COLORS
 	switch (type) {
@@ -45,7 +47,8 @@ bool Item::CheckCollection(float playerX, float playerY) const {
 	float dy = playerY - y;
 	float distanceSquared = dx * dx + dy * dy;
 
-	return distanceSquared <= (radius * radius);
+	// Use collisionRadius for collection check (not visualRadius)
+	return distanceSquared <= (collisionRadius * collisionRadius);
 }
 
 // Draw the item
@@ -57,7 +60,10 @@ void Item::Draw(AEGfxVertexList* pMesh) const {
 	float drawY = y;
 
 	AEMtx33 scale, trans, transform;
-	AEMtx33Scale(&scale, 48.0f * radius * 2.0f, 48.0f * radius * 2.0f);
+
+	// Use visualRadius for drawing (keeps items small on screen)
+	// Multiply by 2.0f to convert radius to diameter for scaling
+	AEMtx33Scale(&scale, visualRadius * 2.0f, visualRadius * 2.0f);
 	AEMtx33Trans(&trans, drawX, drawY);
 	AEMtx33Concat(&transform, &trans, &scale);
 
@@ -72,7 +78,6 @@ void Item::Draw(AEGfxVertexList* pMesh) const {
 ItemsManager::ItemsManager() : tileSize(48), pItemMesh(nullptr) {
 	std::srand(static_cast<unsigned>(std::time(nullptr)));
 }
-
 
 void ItemsManager::InitializeGraphics() {
 	if (!pItemMesh) {
@@ -188,6 +193,23 @@ void ItemsManager::Update(float playerX, float playerY, float deltaTime) {
 			// Check collection
 			if (item.CheckCollection(playerX, playerY)) {
 				item.collected = true;
+				item.active = false;
+
+				// Item effects
+				switch (item.type) {
+				case ItemType::POINT:
+					printf("+10 Points!\n");
+					break;
+
+				case ItemType::POWER_UP:
+					printf("Power-up collected! Speed increased!\n");
+					break;
+
+				case ItemType::SLOW_ENEMY:
+					printf("Enemies slowed!\n");
+					break;
+				}
+
 				std::cout << "Item collected at (" << item.x << ", " << item.y << ")\n";
 			}
 		}
