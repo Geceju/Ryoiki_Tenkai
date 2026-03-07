@@ -33,8 +33,9 @@ static AEGfxVertexList* g_pRectOutline = nullptr;
 static std::unique_ptr<Character> g_Character = nullptr;
 
 // END ENTITY DATA
-
-static SimpleEnemy g_Enemy;
+//enemies
+static std::vector<SimpleEnemy> g_Enemies;
+static int g_Difficulty = 1;
 // Set this to true to see neighbors, false to see only the current room
 static bool g_RevealNeighbors = true;
 
@@ -198,9 +199,6 @@ void Level_Load()
 		g_FontId = AEGfxCreateFont("exo2-regular.ttf", 20);
 	}
 
-	// Enemy load
-	g_Enemy.Load();
-
 	// Initialize items graphics (AFTER engine is ready)
 	g_ItemsManager.InitializeGraphics();
 }
@@ -255,6 +253,45 @@ void Level_Init()
 					neighbor->isDiscovered = true;
 				}
 			}
+		}
+	}
+	// --- SPAWN ENEMIES ---
+    g_Enemies.clear();
+
+	// 1. Determine total enemies for the whole level
+	int minSpawns = 1 + ((g_Difficulty - 1) * 3 / 5); // Difficulty 1 = 1, Difficulty 6 = 4
+	int maxSpawns = minSpawns + 2;                    // Difficulty 1 = 3, Difficulty 6 = 6
+	int totalEnemiesToSpawn = Random::Range(minSpawns, maxSpawns);
+
+	int spawnedCount = 0;
+	g_Enemies.clear();
+
+	// 2. Keep trying to spawn until we hit our target count
+	while (spawnedCount < totalEnemiesToSpawn)
+	{
+		// Pick a random room index (skip room 0 if it's always the Start room, 
+		// or check the type)
+		int roomIdx = Random::Range(0, (int)g_DungeonRooms.size() - 1);
+		auto& room = g_DungeonRooms[roomIdx];
+
+		// Safety: Don't spawn in the Start room
+		if (room->type == RoomType::Start) continue;
+
+		// 3. Try to find a floor tile in this room
+		int randCol = Random::Range(1, 14);
+		int randRow = Random::Range(1, 14);
+
+		if (room->tileMap[randRow][randCol] == 0) // It's a floor!
+		{
+			float spawnX = room->rect.left + (randCol * room->tileSize) + (room->tileSize * 0.5f);
+			float spawnY = room->rect.top - (randRow * room->tileSize) - (room->tileSize * 0.5f);
+
+			SimpleEnemy newEnemy;
+			newEnemy.Load();
+			newEnemy.SetPosition(spawnX, spawnY);
+
+			g_Enemies.push_back(newEnemy);
+			spawnedCount++;
 		}
 	}
 
@@ -385,7 +422,10 @@ void Level_Update()
 	float dt = (float)AEFrameRateControllerGetFrameTime();
 
 	// Call the function from the new file
-	g_Enemy.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), dt, g_DungeonRooms);
+	for (auto& enemy : g_Enemies)
+	{
+		enemy.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), dt, g_DungeonRooms);
+	}
 	g_ItemsManager.Update(playerWorldX, playerWorldY, 0.0f);
 
 	// Debug: Show item count when 'I' is pressed
@@ -554,7 +594,10 @@ void Level_Draw()
 		}
 	}
 
-	g_Enemy.Draw();
+	for (auto& enemy : g_Enemies)
+	{
+		enemy.Draw();
+	}
 
 }
 
@@ -591,5 +634,14 @@ void Level_Unload()
 
 	// Release any textures or allocated data inside the player class
 
-	g_Enemy.Unload();
+	for (auto& enemy : g_Enemies) {
+		enemy.Unload();
+	}
+	g_Enemies.clear();
+
+	// 2. Clear the mesh ONCE at the very end
+	if (g_pUnitSquare) {
+		AEGfxMeshFree(g_pUnitSquare);
+		g_pUnitSquare = nullptr;
+	}
 }

@@ -4,45 +4,38 @@
 #include <vector>
 #include <memory>            
 
+enum class EnemyState { IDLE, CHASE, RETURN };
 
-enum class EnemyState
-{
-    IDLE,
-    CHASE,
-    RETURN
-};
-class SimpleEnemy
-{
+class SimpleEnemy {
 public:
-    // Current position
-    float worldX, worldY;
-
-    // Home position (where it returns to)
-    float startX, startY;
-
-    // Settings
-    float speed;
-    float detectionRange; // How close to start chasing
-    float giveUpRange;    // How far before giving up
-
-    // Current State
-    EnemyState currentState;
-
-    // Graphics
-    AEGfxVertexList* pMesh;
-
     SimpleEnemy();
     ~SimpleEnemy();
 
     void Load();
     void Unload();
-
-    // We update SetPosition to save the "Start" location too
-    void SetPosition(float x, float y);
-
     void Update(float playerX, float playerY, float dt, const std::vector<std::unique_ptr<Room>>& rooms);
     void Draw();
+    void SetPosition(float x, float y);
 
 private:
+    float worldX, worldY;
+    float startX, startY;
+    float speed;
+    float detectionRange;
+    float giveUpRange;
+
+
+    EnemyState currentState;
+    struct AEGfxVertexList* pMesh;
+
+    // --- NEW: A* Pathfinding Data ---
+    std::vector<AEVec2> currentPath;
+    int currentPathIndex;
+    float pathRecalculateTimer;
+
     bool IsPosValid(float x, float y, const std::vector<std::unique_ptr<Room>>& rooms);
+
+    // --- NEW: A* Helper Methods ---
+    Room* GetRoomFromPos(float x, float y, const std::vector<std::unique_ptr<Room>>& rooms);
+    void CalculateAStarPath(float targetX, float targetY, const std::vector<std::unique_ptr<Room>>& rooms);
 };
