@@ -15,7 +15,8 @@ struct Item {
 	float x, y;             // World coordinates (in tile units)
 	ItemType type;          // Type of item
 	bool collected;         // Collection status
-	float radius;           // Collection radius
+	float visualRadius;     // Size for rendering (small)
+	float collisionRadius;  // Size for collision detection (large)
 	f32 color[4];           // RGBA color for rendering
 	float lifetime;         // How long it exists (optional)
 	bool active;            // If still active in game
