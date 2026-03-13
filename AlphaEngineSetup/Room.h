@@ -8,59 +8,62 @@
 
 enum class RoomType { Normal, Boss, Start };
 
-// Represents a single area in the dungeon
-// Stores the tile map for collision detection
+// represents single area in dungeon
+// stores tile map for collision detection
 class Room
 {
 public:
-    // The physical boundary of the room
+    // physical boundary of room
     Rect rect;
 
-    // Type determines gameplay behavior like Boss or Start
+    // type determines gameplay behavior
     RoomType type;
 
-    // Tracks if the player has entered this room
+    // tracks discovery status
     bool isDiscovered;
 
-    // Visual theme identifier for color selection
+    // visual theme identifier
     TilesetType tilesetID;
 
-    // The Tile Map for this specific room
-    // 0 represents floor and 1 represents wall
+    // tile map for specific room
+    // zero represents floor and one represents wall
     std::vector<std::vector<int>> tileMap;
 
-    // Grid dimensions for the internal tile map
+    // grid dimensions
     int tileCountX;
     int tileCountY;
     float tileSize;
 
-    // Constructor declaration
+    // constructor declaration
     Room(Rect area);
 
-    // Destructor declaration
+    // destructor declaration
     ~Room();
 
-    // Adds a connection to another room
+    // adds connection to another room
     void AddNeighbour(Room* neighbour);
 
-    // Returns the list of connected rooms
+    // returns list of adjacent rooms
     const std::vector<Room*>& GetNeighbours() const;
 
-    // Checks if a specific room is already a neighbor
+    // checks adjacency
     bool IsNeighbour(Room* other);
 
-    // Clears all connections to release memory
+    // clears connections
     void ClearNeighbours();
 
-    // Calculates the overlap with another room
+    // calculates overlap
     Rect Intersect(Room* other);
 
-    // Helper to check collision
-    // Return 1 for wall and 0 for floor
+    // helper to check collision
+    // return one for wall and zero for floor
     int GetTile(int x, int y);
 
+    // tracks actual maze connections
+    std::vector<Room*> connectedRooms;
+
 private:
-    // Internal storage for connected rooms
+    // internal storage for adjacent rooms
     std::vector<Room*> m_neighbours;
 };
 
