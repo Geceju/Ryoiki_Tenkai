@@ -10,7 +10,7 @@ Character::Character(int startX, int startY, float tile)
 	// Centers the world position within the grid tile
 	worldX = (static_cast<float>(gridX) * tileSize) + (tileSize * 0.5f);
 	worldY = (static_cast<float>(gridY) * tileSize) + (tileSize * 0.5f);
-	moveSpeed = 400.0f;
+	moveSpeed = 200.0f;
 	isMoving = false;
 }
 
