@@ -21,6 +21,8 @@
     <ClCompile Include="MainMenu.cpp" />
     <ClCompile Include="Room.cpp" />
     <ClCompile Include="RoomGenerator.cpp" />
+    <ClCompile Include="RoomTemplate.cpp" />
+    <ClCompile Include="SettingsMenu.cpp" />
     <ClCompile Include="Tilesets.cpp" />
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>
@@ -34,6 +36,8 @@
     <ClInclude Include="MainMenu.h" />
     <ClInclude Include="Room.h" />
     <ClInclude Include="RoomGenerator.h" />
+    <ClInclude Include="RoomTemplate.h" />
+    <ClInclude Include="SettingsMenu.h" />
     <ClInclude Include="Tilesets.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>

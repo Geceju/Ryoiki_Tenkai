@@ -1,303 +1,162 @@
+#include "MainMenu.h"
+#include "SettingsMenu.h"
 #include "GameStateManager.h"
 #include <iostream>
 #include "AEEngine.h"
+#include <cmath>
+#include <cstdlib>
 
-// Structure defining the visual and spatial properties of a menu button
-typedef struct{
-    float x, y;
-    float scaleX, scaleY;
-    float r, g, b;
-} Button;
+struct Button {
+    float x, y, scaleX, scaleY, r, g, b;
+};
 
-// Global button instances and the shared mesh used to render them
-static Button btnPlay, btnExit;
-static AEGfxVertexList* pMeshButton = 0;
+static Button btnPlay, btnSettings, btnExit;
+static AEGfxVertexList* pMeshButton = nullptr;
+static s8 g_FontIdMenu = -1;
+static s8 g_FontIdTitle = -1;
 
-void MainMenu_Load()
-{
-    // Define a 1x1 square mesh that will be scaled and moved to represent different buttons
+static bool showSettingsMenu = false;
+
+// Background animation
+static bool bgIsRunning = false;
+static float bgTimer = 0.0f;
+static float bgPlayerX, bgPlayerY, bgEnemyX, bgEnemyY;
+static float bgDirX, bgDirY, bgSpeed = 400.0f, bgTravelDist, bgMaxDist;
+static float g_TotalTime = 0.0f;
+
+static bool IsMouseInButton(float mx, float my, const Button& b) {
+    return (mx >= b.x - (b.scaleX / 2.0f) && mx <= b.x + (b.scaleX / 2.0f) &&
+        my >= b.y - (b.scaleY / 2.0f) && my <= b.y + (b.scaleY / 2.0f));
+}
+
+void MainMenu_Load() {
     AEGfxMeshStart();
-
-    // Construct the first triangle using counter-clockwise winding and standard UV mapping
-    AEGfxTriAdd(
-        -0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f,
-        0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
-        -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f
-    );
-
-    // Construct the second triangle to finalize the square shape
-    AEGfxTriAdd(
-        0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
-        0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f,
-        -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f
-    );
-
+    AEGfxTriAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f, 0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+    AEGfxTriAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, 0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
     pMeshButton = AEGfxMeshEnd();
+
+    g_FontIdMenu = AEGfxCreateFont("Assets/exo2-regular.ttf", 24);
+    g_FontIdTitle = AEGfxCreateFont("Assets/exo2-regular.ttf", 96);
+
+    SettingsMenu_Load();
 }
 
-void MainMenu_Initialize()
-{
-    // Configure Play Button (Green, Top)
-    btnPlay.x = 0.0f;
-    btnPlay.y = 50.0f;
-    btnPlay.scaleX = 200.0f;
-    btnPlay.scaleY = 80.0f;
-    btnPlay.r = 0.0f; btnPlay.g = 1.0f; btnPlay.b = 0.0f;
+void MainMenu_Initialize() {
+    AEGfxSetCamPosition(0.0f, 0.0f);
+    float bR = 0.2f, bG = 0.6f, bB = 0.8f;
 
-    // Configure Exit Button (Red, Bottom)
-    btnExit.x = 0.0f;
-    btnExit.y = -50.0f;
-    btnExit.scaleX = 200.0f;
-    btnExit.scaleY = 80.0f;
-    btnExit.r = 1.0f; btnExit.g = 0.0f; btnExit.b = 0.0f;
+    btnPlay = { 0.0f, 80.0f, 200.0f, 70.0f, bR, bG, bB };
+    btnSettings = { 0.0f, -10.0f, 200.0f, 70.0f, bR, bG, bB };
+    btnExit = { 0.0f, -100.0f, 200.0f, 70.0f, bR, bG, bB };
+
+    showSettingsMenu = false;
+    bgIsRunning = false;
+    bgTimer = 0.0f;
+    g_TotalTime = 0.0f;
+
+    SettingsMenu_Initialize();
 }
 
-void MainMenu_Update()
-{
-    // Retrieve the current mouse position in screen coordinates
-    s32 mouseX, mouseY;
-    AEInputGetCursorPosition(&mouseX, &mouseY);
+void MainMenu_Update() {
+    float dt = (float)AEFrameRateControllerGetFrameTime();
+    g_TotalTime += dt;
 
-    // Convert screen coordinates to world coordinates (assuming camera is at 0,0)
-    // Screen (0,0) is top-left; World (0,0) is center.
-    float worldMouseX = (float)mouseX - (AEGfxGetWindowWidth() / 2.0f);
-    float worldMouseY = (float)(AEGfxGetWindowHeight() / 2.0f) - mouseY;
-
-    // --- PLAY BUTTON LOGIC ---
-    if (worldMouseX >= btnPlay.x - (btnPlay.scaleX / 2) &&
-        worldMouseX <= btnPlay.x + (btnPlay.scaleX / 2) &&
-        worldMouseY >= btnPlay.y - (btnPlay.scaleY / 2) &&
-        worldMouseY <= btnPlay.y + (btnPlay.scaleY / 2))
-    {
-        btnPlay.g = 0.5f; // Hover effect (darker green)
-        if (AEInputCheckTriggered(AEVK_LBUTTON))
-        {
-            gGameStateNext = GS_LEVEL1;
-        }
-    }
-    else
-    {
-        btnPlay.g = 1.0f; // Reset to full green
+    if (showSettingsMenu) {
+        SettingsMenu_Update(showSettingsMenu);
+        return;
     }
 
-    // --- EXIT BUTTON LOGIC ---
-    if (worldMouseX >= btnExit.x - (btnExit.scaleX / 2) &&
-        worldMouseX <= btnExit.x + (btnExit.scaleX / 2) &&
-        worldMouseY >= btnExit.y - (btnExit.scaleY / 2) &&
-        worldMouseY <= btnExit.y + (btnExit.scaleY / 2))
-    {
-        btnExit.r = 0.5f; // Hover effect (darker red)
-        if (AEInputCheckTriggered(AEVK_LBUTTON))
-        {
-            gGameStateNext = GS_QUIT;
+    s32 mx, my;
+    AEInputGetCursorPosition(&mx, &my);
+    float winW = (float)AEGfxGetWindowWidth(), winH = (float)AEGfxGetWindowHeight();
+    float worldMX = (float)mx - winW / 2.0f, worldMY = winH / 2.0f - (float)my;
+
+    if (IsMouseInButton(worldMX, worldMY, btnPlay) && AEInputCheckTriggered(AEVK_LBUTTON))          gGameStateNext = GS_LEVEL1;
+    if (IsMouseInButton(worldMX, worldMY, btnSettings) && AEInputCheckTriggered(AEVK_LBUTTON))    showSettingsMenu = true;
+    if (IsMouseInButton(worldMX, worldMY, btnExit) && AEInputCheckTriggered(AEVK_LBUTTON))          gGameStateNext = GS_QUIT;
+
+    // Background logic
+    if (!bgIsRunning) {
+        bgTimer -= dt;
+        if (bgTimer <= 0.0f) {
+            bgIsRunning = true;
+            float angle = (float)(std::rand() % 360) * 3.14159f / 180.0f;
+            float spawnDist = sqrtf(winW * winW + winH * winH) / 2.0f + 150.0f;
+            bgMaxDist = spawnDist * 2.1f;
+            bgTravelDist = 0.0f;
+            bgDirX = -cosf(angle); bgDirY = -sinf(angle);
+            bgEnemyX = cosf(angle) * spawnDist; bgEnemyY = sinf(angle) * spawnDist;
+            bgPlayerX = bgEnemyX + bgDirX * 80.0f; bgPlayerY = bgEnemyY + bgDirY * 80.0f;
         }
     }
     else {
-        btnExit.r = 1.0f; // Reset to full red
-    }
-
-    // Press Q to quit the game entirely
-    if (AEInputCheckTriggered(AEVK_Q)) {
-        gGameStateNext = GS_QUIT;
+        float step = bgSpeed * dt;
+        bgPlayerX += bgDirX * step; bgPlayerY += bgDirY * step;
+        bgEnemyX += bgDirX * step; bgEnemyY += bgDirY * step;
+        bgTravelDist += step;
+        if (bgTravelDist > bgMaxDist) { bgIsRunning = false; bgTimer = 0.0f; }
     }
 }
 
-void MainMenu_Draw()
-{
-    // Clear background to a dark grey
+void MainMenu_Draw() {
     AEGfxSetBackgroundColor(0.1f, 0.1f, 0.1f);
     AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+    AEMtx33 s, r, t, final;
 
-    AEMtx33 scale, trans, transform;
+    // --- DRAW BACKGROUND CHASE SEQUENCE ---
+    if (bgIsRunning) {
+        float bP = fabsf(sinf(g_TotalTime * 15.0f)) * 10.0f;
+        float bE = fabsf(sinf(g_TotalTime * 15.0f - 1.0f)) * 10.0f;
+        AEMtx33Rot(&r, atan2f(bgDirY, bgDirX));
+        AEMtx33Scale(&s, 40, 40);
 
-    // --- DRAW PLAY BUTTON ---
-    AEGfxSetColorToMultiply(btnPlay.r, btnPlay.g, btnPlay.b, 1.0f);
-    AEMtx33Scale(&scale, btnPlay.scaleX, btnPlay.scaleY);
-    AEMtx33Trans(&trans, btnPlay.x, btnPlay.y);
-    AEMtx33Concat(&transform, &trans, &scale);
+        // Fleeing Player
+        AEMtx33Trans(&t, bgPlayerX, bgPlayerY + bP);
+        AEMtx33Concat(&final, &t, &r); AEMtx33Concat(&final, &final, &s);
+        AEGfxSetColorToMultiply(0, 1, 1, 1); AEGfxSetTransform(final.m); AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
 
-    AEGfxSetTransform(transform.m); // Use .m for the float[3][3] parameter
-    AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
+        // Pursuing Enemy
+        AEMtx33Trans(&t, bgEnemyX, bgEnemyY + bE);
+        AEMtx33Concat(&final, &t, &r); AEMtx33Concat(&final, &final, &s);
+        AEGfxSetColorToMultiply(1, 0, 0, 1); AEGfxSetTransform(final.m); AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
+    }
 
-    // --- DRAW EXIT BUTTON ---
-    AEGfxSetColorToMultiply(btnExit.r, btnExit.g, btnExit.b, 1.0f);
-    AEMtx33Scale(&scale, btnExit.scaleX, btnExit.scaleY);
-    AEMtx33Trans(&trans, btnExit.x, btnExit.y);
-    AEMtx33Concat(&transform, &trans, &scale);
+    float winHalfH = (float)AEGfxGetWindowHeight() / 2.0f;
 
-    AEGfxSetTransform(transform.m);
-    AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
-}
+    // Restored centering logic within the button drawing helper
+    auto DrawBtn = [&](const Button& b, const char* text, float txOffset) {
+        AEMtx33Scale(&s, b.scaleX, b.scaleY);
+        AEMtx33Trans(&t, b.x, b.y);
+        AEMtx33Concat(&final, &t, &s);
+        AEGfxSetColorToMultiply(b.r, b.g, b.b, 1);
+        AEGfxSetTransform(final.m);
+        AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
 
-void MainMenu_Free()
-{
-    // Mesh is cleaned up in Unload, so we clear per-frame data here if needed
-}
+        // Text Y is calculated relative to the button's Y position to keep it vertically centered
+        float textY = (b.y / winHalfH) - 0.015f;
+        AEGfxPrint(g_FontIdMenu, (char*)text, txOffset, textY, 1, 0, 0, 0, 1);
+        };
 
-void MainMenu_Unload()
-{
-    if (pMeshButton)
-    {
-        std::cout << "Cleaning up Main Menu Mesh!" << std::endl;
-        AEGfxMeshFree(pMeshButton);
-        pMeshButton = nullptr;
+    // restored specific horizontal offsets for perfect centering
+    DrawBtn(btnPlay, "Start", -0.035f);
+    DrawBtn(btnSettings, "Settings", -0.055f); // balanced offset for "Settings"
+    DrawBtn(btnExit, "Exit", -0.025f);
+
+    // Title centered at your tested X coordinate
+    if (g_FontIdTitle >= 0) {
+        AEGfxPrint(g_FontIdTitle, (char*)"Enoki Tenkai", -0.35f, 0.6f, 1, 1, 1, 1, 1);
+    }
+
+    if (showSettingsMenu) {
+        SettingsMenu_Draw(false);
     }
 }
 
-//#include "GameStateManager.h"
-//#include <stdio.h>
-//#include "AEEngine.h"
-//
-//// Button Data
-//typedef struct {
-//    float x, y;       // Position
-//    float scaleX, scaleY; // Size
-//    float r, g, b;    // Color
-//} Button;
-//
-//Button btnPlay, btnExit;
-//AEGfxVertexList* pMeshButton = 0; // The mesh shape for buttons
-//
-//// --- LOAD: Create meshes/Load Textures ---
-//void MainMenu_Load()
-//{
-//    // Create a simple 1x1 Quad Mesh for buttons
-//    AEGfxMeshStart();
-//    AEGfxTriAdd(
-//        -0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f,
-//        0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
-//        -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f
-//    );
-//    AEGfxTriAdd(
-//        0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
-//        0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f,
-//        -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f
-//    );
-//    pMeshButton = AEGfxMeshEnd();
-//}
-//
-//// --- INIT: Set variable values ---
-//void MainMenu_Initialize()
-//{
-//    // Configure Play Button (Green, Top)
-//    btnPlay.x = 0.0f; btnPlay.y = 50.0f;
-//    btnPlay.scaleX = 200.0f; btnPlay.scaleY = 80.0f;
-//    btnPlay.r = 0.0f; btnPlay.g = 1.0f; btnPlay.b = 0.0f;
-//
-//    // Configure Exit Button (Red, Bottom)
-//    btnExit.x = 0.0f; btnExit.y = -50.0f;
-//    btnExit.scaleX = 200.0f; btnExit.scaleY = 80.0f;
-//    btnExit.r = 1.0f; btnExit.g = 0.0f; btnExit.b = 0.0f;
-//}
-//
-//// --- UPDATE: Input and Logic ---
-//void MainMenu_Update()
-//{
-//    // 1. Get Mouse Position
-//    s32 mouseX, mouseY;
-//    AEInputGetCursorPosition(&mouseX, &mouseY);
-//
-//    // Convert screen coordinates to world coordinates 
-//    // (Assuming camera is at 0,0)
-//    float worldMouseX = (float)mouseX - (AEGfxGetWindowWidth() / 2);
-//    float worldMouseY = -((float)mouseY - (AEGfxGetWindowHeight() / 2)); // Flip Y for Alpha Engine
-//
-//    // 2. Check Input for PLAY Button
-//    // Logic: Is Mouse X inside Left/Right bounds AND Mouse Y inside Top/Bottom bounds?
-//    if (worldMouseX >= btnPlay.x - (btnPlay.scaleX / 2) &&
-//        worldMouseX <= btnPlay.x + (btnPlay.scaleX / 2) &&
-//        worldMouseY >= btnPlay.y - (btnPlay.scaleY / 2) &&
-//        worldMouseY <= btnPlay.y + (btnPlay.scaleY / 2))
-//    {
-//        // Mouse is hovering Play
-//        btnPlay.r = 0.5f; // Highlight effect
-//
-//        if (AEInputCheckTriggered(AEVK_LBUTTON)) {
-//            gGameStateNext = GS_PLAY; // SWITCH STATE
-//        }
-//    }
-//    else {
-//        btnPlay.r = 0.0f; // Reset color
-//    }
-//
-//    // 3. Check Input for EXIT Button
-//    if (worldMouseX >= btnExit.x - (btnExit.scaleX / 2) &&
-//        worldMouseX <= btnExit.x + (btnExit.scaleX / 2) &&
-//        worldMouseY >= btnExit.y - (btnExit.scaleY / 2) &&
-//        worldMouseY <= btnExit.y + (btnExit.scaleY / 2))
-//    {
-//        btnExit.r = 0.5f; // Highlight
-//
-//        if (AEInputCheckTriggered(AEVK_LBUTTON)) {
-//            gGameStateNext = GS_QUIT; // EXIT GAME
-//        }
-//    }
-//    else {
-//        btnExit.r = 1.0f; // Reset color
-//    }
-//}
-//
-//// --- DRAW: Render to screen ---
-//void MainMenu_Draw()
-//{
-//    AEGfxSetBackgroundColor(0.2f, 0.2f, 0.2f);
-//    // Define temporary matrices for calculation
-//    AEMtx33 scale, trans, transform;
-//
-//    // Set Render Mode
-//    AEGfxSetRenderMode(AE_GFX_RM_COLOR);
-//    // If textures are turned off, we use BlendColor or ColorToMultiply to set the color
-//    AEGfxSetBlendColor(0.0f, 0.0f, 0.0f, 0.0f); // Reset blend
-//
-//    // --- DRAW PLAY BUTTON ---
-//
-//    // 1. Set Color (This replaces AEGfxSetTintColor)
-//    // We use AEGfxSetColorToMultiply to tint the white mesh
-//    AEGfxSetColorToMultiply(btnPlay.r, btnPlay.g, btnPlay.b, 1.0f);
-//
-//    // 2. Create Scale Matrix
-//    AEMtx33Scale(&scale, btnPlay.scaleX, btnPlay.scaleY);
-//
-//    // 3. Create Translation (Position) Matrix
-//    AEMtx33Trans(&trans, btnPlay.x, btnPlay.y);
-//
-//    // 4. Combine them: Transform = Translation * Scale
-//    // (Note: The order is usually Trans * Rot * Scale)
-//    AEMtx33Concat(&transform, &trans, &scale);
-//
-//    // 5. Send Matrix to Graphics Card and Draw
-//    AEGfxSetTransform(transform.m);
-//    AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
-//
-//
-//    // --- DRAW EXIT BUTTON ---
-//
-//    // 1. Set Color
-//    AEGfxSetColorToMultiply(btnExit.r, btnExit.g, btnExit.b, 1.0f);
-//
-//    // 2. Create Scale Matrix
-//    AEMtx33Scale(&scale, btnExit.scaleX, btnExit.scaleY);
-//
-//    // 3. Create Translation Matrix
-//    AEMtx33Trans(&trans, btnExit.x, btnExit.y);
-//
-//    // 4. Combine
-//    AEMtx33Concat(&transform, &trans, &scale);
-//
-//    // 5. Draw
-//    AEGfxSetTransform(transform.m);
-//    AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
-//}
-//
-//// --- FREE: Unload memory ---
-//void MainMenu_Free()
-//{
-//    // Alpha Engine usually handles mesh freeing automatically or via specific calls
-//    if (pMeshButton) AEGfxMeshFree(pMeshButton);
-//}
-//
-//// --- UNLOAD ---
-//void MainMenu_Unload()
-//{
-//    // Reset variables if needed
-//}
+void MainMenu_Free() {}
+
+void MainMenu_Unload() {
+    if (pMeshButton) AEGfxMeshFree(pMeshButton);
+    if (g_FontIdMenu >= 0) AEGfxDestroyFont(g_FontIdMenu);
+    if (g_FontIdTitle >= 0) AEGfxDestroyFont(g_FontIdTitle);
+    SettingsMenu_Unload();
+}
