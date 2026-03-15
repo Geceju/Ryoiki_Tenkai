@@ -7,7 +7,8 @@ SimpleEnemy::SimpleEnemy()
     : worldX(0), worldY(0), startX(0), startY(0),
     speed(200.0f), detectionRange(500.0f), giveUpRange(150.0f),
     currentState(EnemyState::IDLE), pMesh(nullptr),
-    currentPathIndex(0), pathRecalculateTimer(0.0f) // Initialize pathing vars
+    currentPathIndex(0), pathRecalculateTimer(0.0f),chaseTimer(0.0f),
+    hasPatrolTarget(false),maxChaseTime(5.0f)// Initialize pathing vars
 {
 }
 
@@ -46,85 +47,114 @@ void SimpleEnemy::Update(float playerX, float playerY, float dt, const std::vect
     float dy = playerY - worldY;
     float distToPlayer = sqrtf(dx * dx + dy * dy);
 
-    float hx = startX - worldX;
-    float hy = startY - worldY;
-    float distToHome = sqrtf(hx * hx + hy * hy);
-
+    // Check if player and enemy are in the exact same room
+    Room* myRoom = GetRoomFromPos(worldX, worldY, rooms);
+    Room* pRoom = GetRoomFromPos(playerX, playerY, rooms);
+    bool inSameRoom = (myRoom != nullptr && myRoom == pRoom);
     switch (currentState)
     {
     case EnemyState::IDLE:
-        if (distToPlayer < detectionRange) {
+        currentState = EnemyState::PATROL;
+        break;
+
+    case EnemyState::PATROL:
+        // Only notice the player if they are in the exact same room and within range
+        if (inSameRoom && distToPlayer < detectionRange) {
             currentState = EnemyState::CHASE;
-            pathRecalculateTimer = 0.0f; // Force immediate path calculation
+            chaseTimer = maxChaseTime; // Apply the dice roll duration
+            pathRecalculateTimer = 0.0f;
+            currentPathIndex = 0;
+            currentPath.clear();
+        }
+        else {
+            if (!hasPatrolTarget) {
+                if (myRoom) {
+                    // Pick a random floor tile in the current room to walk to
+                    int rCol = rand() % myRoom->tileCountX;
+                    int rRow = rand() % myRoom->tileCountY;
+
+                    if (myRoom->tileMap[rRow][rCol] == 0) {
+                        float tx = myRoom->rect.left + (rCol * myRoom->tileSize) + (myRoom->tileSize * 0.5f);
+                        float ty = myRoom->rect.top - (rRow * myRoom->tileSize) - (myRoom->tileSize * 0.5f);
+                        CalculateAStarPath(tx, ty, rooms);
+                        hasPatrolTarget = true;
+                    }
+                }
+            }
+            else {
+                // Move along the patrol path
+                if (!currentPath.empty() && currentPathIndex < currentPath.size()) {
+                    AEVec2 targetPoint = currentPath[currentPathIndex];
+                    float px = targetPoint.x - worldX;
+                    float py = targetPoint.y - worldY;
+                    float distToPoint = sqrtf(px * px + py * py);
+
+                    if (distToPoint < 10.0f) {
+                        currentPathIndex++;
+                    }
+                    else {
+                        worldX += (px / distToPoint) * speed * dt;
+                        worldY += (py / distToPoint) * speed * dt;
+                    }
+                }
+                else {
+                    hasPatrolTarget = false; // Target reached, wait a frame, then pick a new one
+                }
+            }
         }
         break;
 
     case EnemyState::CHASE:
-        if (distToPlayer > giveUpRange) {
-            currentState = EnemyState::RETURN;
-            currentPath.clear(); // Clear path when giving up
+        chaseTimer -= dt;
+
+        // Give up if the timer ends
+        if (chaseTimer <= 0.0f) {
+            currentState = EnemyState::PATROL;
+            hasPatrolTarget = false;
+            currentPath.clear();
+            currentPathIndex = 0;
         }
         else {
-            // Recalculate A* path every 0.5 seconds to track moving player
             pathRecalculateTimer -= dt;
-            if (pathRecalculateTimer <= 0.0f) {
+
+            if (pathRecalculateTimer <= 0.0f || currentPath.empty()) {
                 CalculateAStarPath(playerX, playerY, rooms);
-                pathRecalculateTimer = 0.5f;
+                pathRecalculateTimer = 0.15f; // 0.1s is fine, 0.15s is often smoother
             }
 
-            // Move along the calculated A* path
             if (!currentPath.empty() && currentPathIndex < currentPath.size()) {
                 AEVec2 targetPoint = currentPath[currentPathIndex];
                 float px = targetPoint.x - worldX;
                 float py = targetPoint.y - worldY;
                 float distToPoint = sqrtf(px * px + py * py);
 
-                if (distToPoint < 10.0f) { // Reached current waypoint, go to next
+                // Increase this to 15.0f or 20.0f if the enemy "orbits" the waypoint
+                if (distToPoint < 15.0f) {
                     currentPathIndex++;
                 }
                 else {
                     float dirX = px / distToPoint;
                     float dirY = py / distToPoint;
-
                     worldX += dirX * speed * dt;
                     worldY += dirY * speed * dt;
                 }
             }
             else {
-                // Fallback: If no path found or very close, use direct chase
-                if (distToPlayer > 0.01f) {
-                    float dirX = dx / distToPlayer;
-                    float dirY = dy / distToPlayer;
-                    float nextX = worldX + (dirX * speed * dt);
-                    float nextY = worldY + (dirY * speed * dt);
-
-                    if (IsPosValid(nextX, worldY, rooms)) worldX = nextX;
-                    if (IsPosValid(worldX, nextY, rooms)) worldY = nextY;
+                // FALLBACK: If A* fails (e.g. player stands on a wall edge), 
+                // nudge the enemy directly toward the player so they don't freeze.
+                float dx = playerX - worldX;
+                float dy = playerY - worldY;
+                float d = sqrtf(dx * dx + dy * dy);
+                if (d > 1.0f) {
+                    worldX += (dx / d) * speed * dt;
+                    worldY += (dy / d) * speed * dt;
                 }
             }
         }
         break;
 
     case EnemyState::RETURN:
-        // (Keep your existing RETURN state logic here)
-        if (distToPlayer < detectionRange) {
-            currentState = EnemyState::CHASE;
-            pathRecalculateTimer = 0.0f;
-        }
-        else if (distToHome < 10.0f) {
-            worldX = startX;
-            worldY = startY;
-            currentState = EnemyState::IDLE;
-        }
-        else {
-            float dirX = hx / distToHome;
-            float dirY = hy / distToHome;
-            float nextX = worldX + (dirX * speed * dt);
-            float nextY = worldY + (dirY * speed * dt);
-
-            if (IsPosValid(nextX, worldY, rooms)) worldX = nextX;
-            if (IsPosValid(worldX, nextY, rooms)) worldY = nextY;
-        }
+        currentState = EnemyState::PATROL; // Safely fall back to patrolling
         break;
     }
 }
@@ -135,11 +165,13 @@ void SimpleEnemy::Draw()
 
     // Change color based on state for visual feedback
     if (currentState == EnemyState::IDLE)
-        AEGfxSetColorToMultiply(0.5f, 0.5f, 0.5f, 1.0f); // Grey (Sleeping)
+        AEGfxSetColorToMultiply(0.5f, 0.5f, 0.5f, 1.0f);
+    else if (currentState == EnemyState::PATROL)
+        AEGfxSetColorToMultiply(0.0f, 1.0f, 0.0f, 1.0f);
     else if (currentState == EnemyState::CHASE)
-        AEGfxSetColorToMultiply(1.0f, 0.2f, 0.2f, 1.0f); // Bright Red (Angry)
+        AEGfxSetColorToMultiply(1.0f, 0.2f, 0.2f, 1.0f);
     else if (currentState == EnemyState::RETURN)
-        AEGfxSetColorToMultiply(1.0f, 1.0f, 0.0f, 1.0f); // Yellow (Confused/Returning)
+        AEGfxSetColorToMultiply(1.0f, 1.0f, 0.0f, 1.0f);
 
     AEMtx33 scale, trans, transform;
     AEMtx33Scale(&scale, 25.0f, 25.0f);

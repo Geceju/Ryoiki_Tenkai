@@ -258,26 +258,17 @@ void Level_Init()
 	// --- SPAWN ENEMIES ---
     g_Enemies.clear();
 
-	// 1. Determine total enemies for the whole level
-	int minSpawns = 1 + ((g_Difficulty - 1) * 3 / 5); // Difficulty 1 = 1, Difficulty 6 = 4
-	int maxSpawns = minSpawns + 2;                    // Difficulty 1 = 3, Difficulty 6 = 6
-	int totalEnemiesToSpawn = Random::Range(minSpawns, maxSpawns);
-
+	int totalEnemiesToSpawn = 3;
 	int spawnedCount = 0;
-	g_Enemies.clear();
 
-	// 2. Keep trying to spawn until we hit our target count
 	while (spawnedCount < totalEnemiesToSpawn)
 	{
-		// Pick a random room index (skip room 0 if it's always the Start room, 
-		// or check the type)
 		int roomIdx = Random::Range(0, (int)g_DungeonRooms.size() - 1);
 		auto& room = g_DungeonRooms[roomIdx];
 
 		// Safety: Don't spawn in the Start room
 		if (room->type == RoomType::Start) continue;
 
-		// 3. Try to find a floor tile in this room
 		int randCol = Random::Range(1, 14);
 		int randRow = Random::Range(1, 14);
 
@@ -290,10 +281,18 @@ void Level_Init()
 			newEnemy.Load();
 			newEnemy.SetPosition(spawnX, spawnY);
 
+			// Dice roll for chase duration (e.g., 1d6 roll + base time)
+			int diceRoll = Random::Range(1, 6);
+			
+			newEnemy.SetChaseDuration(10.0f + static_cast<float>(diceRoll)*5.0f);
+
+			newEnemy.currentState = EnemyState::PATROL; // Start patrolling
+
 			g_Enemies.push_back(newEnemy);
 			spawnedCount++;
 		}
 	}
+	
 
 	// Spawn Items
 	if (!g_ItemsInitialized)
@@ -424,7 +423,9 @@ void Level_Update()
 	// Call the function from the new file
 	for (auto& enemy : g_Enemies)
 	{
+		// 1. Update enemy AI/Movement first
 		enemy.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), dt, g_DungeonRooms);
+
 	}
 	g_ItemsManager.Update(playerWorldX, playerWorldY, 0.0f);
 

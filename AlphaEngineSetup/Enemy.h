@@ -4,7 +4,7 @@
 #include <vector>
 #include <memory>            
 
-enum class EnemyState { IDLE, CHASE, RETURN };
+enum class EnemyState { IDLE, CHASE, RETURN, PATROL };
 
 class SimpleEnemy {
 public:
@@ -16,6 +16,10 @@ public:
     void Update(float playerX, float playerY, float dt, const std::vector<std::unique_ptr<Room>>& rooms);
     void Draw();
     void SetPosition(float x, float y);
+    void SetChaseDuration(float duration) { maxChaseTime = duration; }
+    float GetWorldX() const { return worldX; }
+    float GetWorldY() const { return worldY; }
+    void SetState(EnemyState newState) { currentState = newState; }
 
 private:
     float worldX, worldY;
@@ -23,8 +27,11 @@ private:
     float speed;
     float detectionRange;
     float giveUpRange;
+    float chaseTimer;
+    float maxChaseTime;
+    bool hasPatrolTarget;
 
-
+public:
     EnemyState currentState;
     struct AEGfxVertexList* pMesh;
 
