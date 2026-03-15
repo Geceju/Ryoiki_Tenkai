@@ -216,9 +216,12 @@ void Level_Update()
 	if (AEInputCheckTriggered(AEVK_M)) g_ShowWayfinder = !g_ShowWayfinder;
 	if (AEInputCheckTriggered(AEVK_C)) g_ShowColors = !g_ShowColors;
 
+	float dt = (float)AEFrameRateControllerGetFrameTime();
+
 	if (g_Character)
 	{
 		g_Character->Update(g_DungeonRooms);
+		g_Character->UpdateAbilities(dt, g_Enemy, g_ItemsManager, g_DungeonRooms);
 		g_Character->CheckItemCollection(g_ItemsManager);
 		AEGfxSetCamPosition(g_Character->GetWorldX(), g_Character->GetWorldY());
 
@@ -238,7 +241,7 @@ void Level_Update()
 		}
 	}
 
-	float dt = (float)AEFrameRateControllerGetFrameTime();
+	
 	g_Enemy.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), dt, g_DungeonRooms);
 	g_ItemsManager.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), 0.0f);
 }
@@ -317,7 +320,11 @@ void Level_Draw()
 		}
 	}
 
-	if (g_Character) g_Character->Draw();
+	if (g_Character)
+	{
+		g_Character->DrawAbilities();
+		g_Character->Draw();
+	}
 	g_Enemy.Draw();
 
 	// Wayfinder

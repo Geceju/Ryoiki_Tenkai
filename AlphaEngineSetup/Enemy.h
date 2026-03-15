@@ -42,7 +42,11 @@ public:
 
     void Update(float playerX, float playerY, float dt, const std::vector<std::unique_ptr<Room>>& rooms);
     void Draw();
+    // Abilties
+    void Stun(float duration);
+    bool IsStunned() const { return stunTimer > 0.0f; }
 
 private:
     bool IsPosValid(float x, float y, const std::vector<std::unique_ptr<Room>>& rooms);
+    float stunTimer;
 };

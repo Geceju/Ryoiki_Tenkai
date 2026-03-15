@@ -4,7 +4,7 @@
 SimpleEnemy::SimpleEnemy()
     : worldX(0), worldY(0), startX(0), startY(0),
     speed(200.0f), detectionRange(500.0f), giveUpRange(150.0f),
-    currentState(EnemyState::IDLE), pMesh(nullptr)
+    currentState(EnemyState::IDLE), pMesh(nullptr), stunTimer(0.0f)
 {
 }
 
@@ -40,8 +40,27 @@ void SimpleEnemy::SetPosition(float x, float y)
     startY = y;
 }
 
+void SimpleEnemy::Stun(float duration)
+{
+    if (duration > stunTimer)
+    {
+        stunTimer = duration;
+    }
+}
+
 void SimpleEnemy::Update(float playerX, float playerY, float dt, const std::vector<std::unique_ptr<Room>>& rooms)
 {
+    // stun enemy
+    if (stunTimer > 0.0f)
+    {
+        stunTimer -= dt;
+        if (stunTimer < 0.0f)
+        {
+            stunTimer = 0.0f;
+        }
+        return;
+    }
+
     // Calculate distance to Player
     float dx = playerX - worldX;
     float dy = playerY - worldY;
@@ -127,7 +146,9 @@ void SimpleEnemy::Draw()
     if (!pMesh) return;
 
     // Change color based on state for visual feedback
-    if (currentState == EnemyState::IDLE)
+    if (IsStunned())
+        AEGfxSetColorToMultiply(0.0f, 0.5f, 1.0f, 1.0f);
+    else if (currentState == EnemyState::IDLE)
         AEGfxSetColorToMultiply(0.5f, 0.5f, 0.5f, 1.0f); // Grey (Sleeping)
     else if (currentState == EnemyState::CHASE)
         AEGfxSetColorToMultiply(1.0f, 0.2f, 0.2f, 1.0f); // Bright Red (Angry)
