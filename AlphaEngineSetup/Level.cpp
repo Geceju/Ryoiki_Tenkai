@@ -27,7 +27,11 @@ static AEGfxVertexList* g_pRectOutline = nullptr;
 
 // entity data
 static std::unique_ptr<Character> g_Character = nullptr;
-static SimpleEnemy g_Enemy;
+
+// END ENTITY DATA
+//enemies
+static std::vector<SimpleEnemy> g_Enemies;
+static int g_Difficulty = 1;
 
 // level state
 static bool g_RevealNeighbors = true;
@@ -137,7 +141,7 @@ void Level_Load()
 	g_FontId = AEGfxCreateFont("Assets/exo2-regular.ttf", 20);
 	if (g_FontId < 0) g_FontId = AEGfxCreateFont("Assets\\exo2-regular.ttf", 20);
 
-	g_Enemy.Load();
+	// Initialize items graphics (AFTER engine is ready)
 	g_ItemsManager.InitializeGraphics();
 
 	// Load shared settings menu resources
@@ -176,6 +180,45 @@ void Level_Init()
 			}
 		}
 	}
+	// --- SPAWN ENEMIES ---
+    g_Enemies.clear();
+
+	int totalEnemiesToSpawn = 3;
+	int spawnedCount = 0;
+
+	while (spawnedCount < totalEnemiesToSpawn)
+	{
+		int roomIdx = Random::Range(0, (int)g_DungeonRooms.size() - 1);
+		auto& room = g_DungeonRooms[roomIdx];
+
+		// Safety: Don't spawn in the Start room
+		if (room->type == RoomType::Start) continue;
+
+		// change to 1, 512 for new map
+		int randCol = Random::Range(1, 14);
+		int randRow = Random::Range(1, 14);
+
+		if (room->tileMap[randRow][randCol] == 0) // It's a floor!
+		{
+			float spawnX = room->rect.left + (randCol * room->tileSize) + (room->tileSize * 0.5f);
+			float spawnY = room->rect.top - (randRow * room->tileSize) - (room->tileSize * 0.5f);
+
+			SimpleEnemy newEnemy;
+			newEnemy.Load();
+			newEnemy.SetPosition(spawnX, spawnY);
+
+			// Dice roll for chase duration (e.g., 1d6 roll + base time)
+			int diceRoll = Random::Range(1, 6);
+			
+			newEnemy.SetChaseDuration(10.0f + static_cast<float>(diceRoll)*5.0f);
+
+			newEnemy.currentState = EnemyState::PATROL; // Start patrolling
+
+			g_Enemies.push_back(newEnemy);
+			spawnedCount++;
+		}
+	}
+	
 
 	if (!g_ItemsInitialized)
 	{
@@ -239,8 +282,27 @@ void Level_Update()
 	}
 
 	float dt = (float)AEFrameRateControllerGetFrameTime();
-	g_Enemy.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), dt, g_DungeonRooms);
-	g_ItemsManager.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), 0.0f);
+
+	// Call the function from the new file
+	for (auto& enemy : g_Enemies)
+	{
+		// 1. Update enemy AI/Movement first
+		enemy.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), dt, g_DungeonRooms);
+
+	}
+	g_ItemsManager.Update(playerWorldX, playerWorldY, 0.0f);
+
+	// Debug: Show item count when 'I' is pressed
+	if (AEInputCheckTriggered(AEVK_I))
+	{
+		printf("Items collected: %d/%d\n",
+			g_ItemsManager.GetCollectedCount(),
+			g_ItemsManager.GetTotalCount());
+
+		// Debug: Print positions of all uncollected items
+		printf("Uncollected items at positions:\n");
+		// You might need to add a method to ItemsManager to iterate items
+	}
 }
 
 void Level_Draw()
@@ -317,8 +379,10 @@ void Level_Draw()
 		}
 	}
 
-	if (g_Character) g_Character->Draw();
-	g_Enemy.Draw();
+	for (auto& enemy : g_Enemies)
+	{
+		enemy.Draw();
+	}
 
 	// Wayfinder
 	if (g_ShowWayfinder && g_BossRoom && g_Character)
@@ -360,9 +424,24 @@ void Level_Free()
 
 void Level_Unload()
 {
-	if (g_pUnitSquare) AEGfxMeshFree(g_pUnitSquare);
-	if (g_pRectOutline) AEGfxMeshFree(g_pRectOutline);
-	if (g_FontId >= 0) AEGfxDestroyFont(g_FontId);
-	g_Enemy.Unload();
-	SettingsMenu_Unload();
+	if (g_pUnitSquare) { AEGfxMeshFree(g_pUnitSquare); g_pUnitSquare = nullptr; }
+	if (g_pRectOutline) { AEGfxMeshFree(g_pRectOutline); g_pRectOutline = nullptr; }
+
+	if (g_FontId >= 0) {
+		AEGfxDestroyFont(g_FontId);
+		g_FontId = -1;
+	}
+
+	// Release any textures or allocated data inside the player class
+
+	for (auto& enemy : g_Enemies) {
+		enemy.Unload();
+	}
+	g_Enemies.clear();
+
+	// 2. Clear the mesh ONCE at the very end
+	if (g_pUnitSquare) {
+		AEGfxMeshFree(g_pUnitSquare);
+		g_pUnitSquare = nullptr;
+	}
 }
