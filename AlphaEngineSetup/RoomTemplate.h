@@ -28,10 +28,16 @@ struct RoomTemplate
 class TemplateManager
 {
 public:
-    // load hardcoded rooms into memory
+    /**
+     * @brief Initializes or clears the internal template memory list. Must be called before generation.
+     */
     static void LoadTemplates();
 
-    // fetch layout matching required doors
+    /**
+     * @brief Retrieves a room layout design that satisfies the required door connections.
+     * @param requiredDoors A bitmask (from DoorDirection) specifying necessary exits.
+     * @return A compiled RoomTemplate structure containing the 2D tile layout.
+     */
     static RoomTemplate GetRandomTemplate(int requiredDoors);
 
 private:

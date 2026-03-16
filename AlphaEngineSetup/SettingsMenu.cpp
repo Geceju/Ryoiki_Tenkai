@@ -1,5 +1,6 @@
 #include "SettingsMenu.h"
 #include "GameStateManager.h"
+#include "AABBCollision.h"
 #include <cstdio>
 #include <cmath>
 
@@ -25,7 +26,7 @@ void SettingsMenu_Load() {
     AEGfxTriAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, 0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
     pMeshSettings = AEGfxMeshEnd();
 
-    // Use the exact case-sensitive filename from your assets
+    // Use the exact case-sensitive filename from assets
     g_FontSettings = AEGfxCreateFont("Assets/Exo2-Regular.ttf", 20);
     if (g_FontSettings < 0) g_FontSettings = AEGfxCreateFont("Arial", 20);
 }
@@ -56,13 +57,6 @@ void SettingsMenu_Initialize() {
     AEGfxSetVSync(g_VSyncEnabled ? 1 : 0);
 }
 
-static bool IsMouseInButton(float mx, float my, const UI_Button& b, float camX, float camY) {
-    float bx = b.x + camX;
-    float by = b.y + camY;
-    return (mx >= bx - (b.scaleX / 2.0f) && mx <= bx + (b.scaleX / 2.0f) &&
-        my >= by - (b.scaleY / 2.0f) && my <= by + (b.scaleY / 2.0f));
-}
-
 void SettingsMenu_Update(bool& isMenuOpen) {
     s32 mouseX, mouseY;
     AEInputGetCursorPosition(&mouseX, &mouseY);
@@ -76,32 +70,34 @@ void SettingsMenu_Update(bool& isMenuOpen) {
     float worldMX = (float)mouseX - (winW / 2.0f) + camX;
     float worldMY = (winH / 2.0f) - (float)mouseY + camY;
 
-    if (IsMouseInButton(worldMX, worldMY, btnClose, camX, camY) && AEInputCheckTriggered(AEVK_LBUTTON)) isMenuOpen = false;
+    // Add the camX and camY to the button's base position directly in the function call
+    if (Collision_PointInButton(worldMX, worldMY, btnClose.x + camX, btnClose.y + camY, btnClose.scaleX, btnClose.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) isMenuOpen = false;
 
-    if (IsMouseInButton(worldMX, worldMY, btnMusMinus, camX, camY) && AEInputCheckTriggered(AEVK_LBUTTON))
+    if (Collision_PointInButton(worldMX, worldMY, btnMusMinus.x + camX, btnMusMinus.y + camY, btnMusMinus.scaleX, btnMusMinus.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
     {
         g_MusicVolume -= 0.1f; if (g_MusicVolume < 0.0f) g_MusicVolume = 0.0f;
     }
-    if (IsMouseInButton(worldMX, worldMY, btnMusPlus, camX, camY) && AEInputCheckTriggered(AEVK_LBUTTON))
+    if (Collision_PointInButton(worldMX, worldMY, btnMusPlus.x + camX, btnMusPlus.y + camY, btnMusPlus.scaleX, btnMusPlus.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
     {
         g_MusicVolume += 0.1f; if (g_MusicVolume > 1.0f) g_MusicVolume = 1.0f;
     }
 
-    if (IsMouseInButton(worldMX, worldMY, btnSFXMinus, camX, camY) && AEInputCheckTriggered(AEVK_LBUTTON))
+    if (Collision_PointInButton(worldMX, worldMY, btnSFXMinus.x + camX, btnSFXMinus.y + camY, btnSFXMinus.scaleX, btnSFXMinus.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
     {
         g_SFXVolume -= 0.1f; if (g_SFXVolume < 0.0f) g_SFXVolume = 0.0f;
     }
-    if (IsMouseInButton(worldMX, worldMY, btnSFXPlus, camX, camY) && AEInputCheckTriggered(AEVK_LBUTTON))
+    if (Collision_PointInButton(worldMX, worldMY, btnSFXPlus.x + camX, btnSFXPlus.y + camY, btnSFXPlus.scaleX, btnSFXPlus.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
     {
         g_SFXVolume += 0.1f; if (g_SFXVolume > 1.0f) g_SFXVolume = 1.0f;
     }
 
-    if (IsMouseInButton(worldMX, worldMY, btnVSync, camX, camY) && AEInputCheckTriggered(AEVK_LBUTTON)) {
+    if (Collision_PointInButton(worldMX, worldMY, btnVSync.x + camX, btnVSync.y + camY, btnVSync.scaleX, btnVSync.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) {
         g_VSyncEnabled = !g_VSyncEnabled;
         AEGfxSetVSync(g_VSyncEnabled ? 1 : 0);
+        printf("VSync: %s\n", g_VSyncEnabled ? "ON" : "OFF");
     }
 
-    if (IsMouseInButton(worldMX, worldMY, btnExitMenu, camX, camY) && AEInputCheckTriggered(AEVK_LBUTTON)) gGameStateNext = GS_MAINMENU;
+    if (Collision_PointInButton(worldMX, worldMY, btnExitMenu.x + camX, btnExitMenu.y + camY, btnExitMenu.scaleX, btnExitMenu.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) gGameStateNext = GS_MAINMENU;
 }
 
 static void DrawUIButtonRelative(const UI_Button& b, float camX, float camY) {
@@ -152,7 +148,7 @@ void SettingsMenu_Draw(bool isIngame) {
 
         // SFX Row
         snprintf(buf, sizeof(buf), "SFX: %d%%", (int)std::round(g_SFXVolume * 100));
-        AEGfxPrint(g_FontSettings, buf, -0.174f, 0.00f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+        AEGfxPrint(g_FontSettings, buf, -0.174f, -0.005f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
         AEGfxPrint(g_FontSettings, (char*)"-", 0.0257f, -0.005f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
         AEGfxPrint(g_FontSettings, (char*)"+", 0.175f, -0.005f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 

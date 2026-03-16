@@ -43,6 +43,14 @@ void GSM_Update()
             gGameStateNext = gGameStateCurr;
         }
 
+		// CLEAR POINTERS HERE: Prevents the phantom frame bug
+		GameStateLoad = nullptr;
+		GameStateInit = nullptr;
+		GameStateUpdate = nullptr;
+		GameStateDraw = nullptr;
+		GameStateFree = nullptr;
+		GameStateUnload = nullptr;
+
 		// Load New State
 		switch (gGameStateCurr)
 		{

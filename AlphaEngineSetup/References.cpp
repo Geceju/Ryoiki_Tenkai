@@ -218,3 +218,12 @@
 //void Level1_Unload() {
 //	std::cout << "Level1 Unloading\n";
 //}
+
+	// Call the function from the new file
+	//for (auto& enemy : g_Enemies)
+	//{
+		// 1. Update enemy AI/Movement first
+	//	enemy.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), dt, g_DungeonRooms);
+
+	//}
+	//g_ItemsManager.Update(playerWorldX, playerWorldY, 0.0f);

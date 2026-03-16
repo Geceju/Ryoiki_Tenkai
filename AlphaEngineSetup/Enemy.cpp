@@ -14,7 +14,6 @@ SimpleEnemy::SimpleEnemy()
 
 SimpleEnemy::~SimpleEnemy()
 {
-    Unload();
 }
 
 void SimpleEnemy::Load()
@@ -29,7 +28,11 @@ void SimpleEnemy::Load()
 
 void SimpleEnemy::Unload()
 {
-    pMesh = nullptr;
+    if (pMesh)
+    {
+        AEGfxMeshFree(pMesh);
+        pMesh = nullptr;
+    }
 }
 
 void SimpleEnemy::SetPosition(float x, float y)

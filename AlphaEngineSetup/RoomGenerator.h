@@ -8,11 +8,20 @@
 class RoomGenerator
 {
 public:
-    // Main generation entry point: creates a grid of rooms centered at 0,0
+    /**
+     * @brief Generates a fully interconnected dungeon layout composed of distinct rooms.
+     * @param width The total maximum width of the allowable dungeon area.
+     * @param height The total maximum height of the allowable dungeon area.
+     * @param roomSize The physical dimension (width and height) of a single room block.
+     * @return A vector of uniquely owned Room objects forming the dungeon.
+     */
     std::vector<std::unique_ptr<Room>> Generate(int width, int height, int roomSize);
 
 private:
-    // Internal helper to link adjacent rooms for the discovery system
+    /**
+     * @brief Scans all generated rooms to detect and register physical adjacency.
+     * @param rooms A reference to the vector containing all generated dungeon rooms.
+     */
     void FindNeighbours(std::vector<std::unique_ptr<Room>>& rooms);
 };
 

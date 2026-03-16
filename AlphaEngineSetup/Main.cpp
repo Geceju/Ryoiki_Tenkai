@@ -14,7 +14,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     // Replace 344 with the actual number from your VS Output window
     // !!!!!!!!!!!!!!!!!!!! Uncommment this line to find memory leaks or code errors !!!!!!!!!!!!!!!!!!!!
-    /*_CrtSetBreakAlloc(344);*/
+    /*_CrtSetBreakAlloc(3583);*/ 
 
     // Tell the compiler to ignore these variables to avoid unused parameter warnings
     UNREFERENCED_PARAMETER(hPrevInstance);

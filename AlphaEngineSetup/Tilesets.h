@@ -22,8 +22,22 @@ struct TilesetData {
 // 3. The Manager
 class TilesetManager {
 public:
-    static void Load(); // Call this once to build the list
+    /**
+     * @brief Initializes the global list of tileset visual styles and colors.
+     */
+    static void Load();
+
+    /**
+     * @brief Retrieves the visual data (RGB colors) for a requested tileset.
+     * @param type The specific TilesetType enum identifier.
+     * @return A constant reference to the TilesetData structure.
+     */
     static const TilesetData& Get(TilesetType type);
+
+    /**
+     * @brief Selects a valid, randomized visual style from the loaded list.
+     * @return A random TilesetType enum.
+     */
     static TilesetType GetRandom();
 
 private:

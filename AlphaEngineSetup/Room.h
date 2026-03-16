@@ -40,23 +40,43 @@ public:
     // destructor declaration
     ~Room();
 
-    // adds connection to another room
+    /**
+     * @brief Registers an adjacent room as a valid connection.
+     * @param neighbour Pointer to the adjoining room to be added.
+     */
     void AddNeighbour(Room* neighbour);
 
-    // returns list of adjacent rooms
+    /**
+     * @brief Retrieves all registered adjacent rooms.
+     * @return A constant reference to the vector of neighboring room pointers.
+     */
     const std::vector<Room*>& GetNeighbours() const;
 
-    // checks adjacency
+    /**
+     * @brief Checks if a specific room is already registered as a neighbor.
+     * @param other Pointer to the room to verify.
+     * @return True if the room is a neighbor, otherwise false.
+     */
     bool IsNeighbour(Room* other);
 
-    // clears connections
+    /**
+     * @brief Removes all neighbor connections, freeing the memory array.
+     */
     void ClearNeighbours();
 
-    // calculates overlap
+    /**
+     * @brief Calculates the overlapping geometric area between this room and another.
+     * @param other Pointer to the target room.
+     * @return A new Rect representing the shared space.
+     */
     Rect Intersect(Room* other);
 
-    // helper to check collision
-    // return one for wall and zero for floor
+    /**
+     * @brief Retrieves the collision/type value of a specific tile in the room's grid.
+     * @param x The local X grid index.
+     * @param y The local Y grid index.
+     * @return 1 (Wall) if solid or out of bounds, 0 (Floor) if walkable.
+     */
     int GetTile(int x, int y);
 
     // tracks actual maze connections

@@ -5,7 +5,8 @@
 #include "GameStateManager.h"
 #include "Enemy.h"
 #include "Items.h"
-#include "Tilesets.h" 
+#include "Tilesets.h"
+#include "AABBCollision.h"
 #include <cstdio> 
 #include <cmath>  
 #include <queue> 
@@ -37,13 +38,24 @@ static int g_Difficulty = 1;
 static bool g_RevealNeighbors = true;
 static Room* g_BossRoom = nullptr;
 static bool g_ShowWayfinder = false;
-static bool g_ShowColors = true;
+static bool g_ShowColors = false;
 static s8 g_FontId = -1;
 
 // Settings/Pause state
 static bool s_ShowSettings = false;
 
-// draw line segment between two points
+/**
+ * @brief Draws a rotated and scaled line segment between two points using a unit square mesh.
+ * @param x1 The starting X coordinate.
+ * @param y1 The starting Y coordinate.
+ * @param x2 The ending X coordinate.
+ * @param y2 The ending Y coordinate.
+ * @param thickness The width of the line segment.
+ * @param r Red color value (0.0 to 1.0).
+ * @param g Green color value (0.0 to 1.0).
+ * @param b Blue color value (0.0 to 1.0).
+ * @param a Alpha (transparency) value (0.0 to 1.0).
+ */
 static void DrawLineSegment(float x1, float y1, float x2, float y2, float thickness, float r, float g, float b, float a)
 {
 	float dx = x2 - x1;
@@ -67,7 +79,13 @@ static void DrawLineSegment(float x1, float y1, float x2, float y2, float thickn
 	AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
 }
 
-// find sequence of rooms using breadth first search
+/**
+ * @brief Calculates the shortest path between two rooms using Breadth-First Search (BFS).
+ * @param startRoom Pointer to the room where the search begins.
+ * @param targetRoom Pointer to the destination room.
+ * @return A vector of 2D coordinates representing the centers of the rooms along the path.
+ * Returns an empty vector if no path is found.
+ */
 static std::vector<AEVec2> GetPathToBoss(Room* startRoom, Room* targetRoom)
 {
 	std::vector<AEVec2> pathPoints;
@@ -244,6 +262,7 @@ void Level_Update()
 	if (AEInputCheckTriggered(AEVK_ESCAPE))
 	{
 		s_ShowSettings = !s_ShowSettings;
+		printf("Settings Menu: %s\n", s_ShowSettings ? "ON" : "OFF");
 	}
 
 	if (s_ShowSettings)
@@ -253,11 +272,11 @@ void Level_Update()
 	}
 
 	// Normal Level Updates
-	if (AEInputCheckTriggered(AEVK_R)) gGameStateNext = GS_RESTART;
-	if (AEInputCheckTriggered(AEVK_Q)) gGameStateNext = GS_QUIT;
-	if (AEInputCheckTriggered(AEVK_N)) g_RevealNeighbors = !g_RevealNeighbors;
-	if (AEInputCheckTriggered(AEVK_M)) g_ShowWayfinder = !g_ShowWayfinder;
-	if (AEInputCheckTriggered(AEVK_C)) g_ShowColors = !g_ShowColors;
+	if (AEInputCheckTriggered(AEVK_R)) { gGameStateNext = GS_RESTART; printf("Restarting Level...\n"); }
+	if (AEInputCheckTriggered(AEVK_Q)) { gGameStateNext = GS_QUIT; printf("Quitting Game...\n"); }
+	if (AEInputCheckTriggered(AEVK_N)) { g_RevealNeighbors = !g_RevealNeighbors; printf("Reveal Neighbors: %s\n", g_RevealNeighbors ? "ON" : "OFF"); }
+	if (AEInputCheckTriggered(AEVK_M)) { g_ShowWayfinder = !g_ShowWayfinder; printf("Show Wayfinder: %s\n", g_ShowWayfinder ? "ON" : "OFF"); }
+	if (AEInputCheckTriggered(AEVK_C)) { g_ShowColors = !g_ShowColors; printf("Show Colors: %s\n", g_ShowColors ? "ON" : "OFF"); }
 
 	if (g_Character)
 	{
@@ -268,8 +287,8 @@ void Level_Update()
 		// Room Discovery
 		for (auto& room : g_DungeonRooms)
 		{
-			if (g_Character->GetWorldX() >= room->rect.left && g_Character->GetWorldX() <= room->rect.right &&
-				g_Character->GetWorldY() >= room->rect.bottom && g_Character->GetWorldY() <= room->rect.top)
+			// check boundary collision using the new AABB helper
+			if (Collision_PointInRect(g_Character->GetWorldX(), g_Character->GetWorldY(), room->rect))
 			{
 				room->isDiscovered = true;
 				if (g_RevealNeighbors)
@@ -283,14 +302,21 @@ void Level_Update()
 
 	float dt = (float)AEFrameRateControllerGetFrameTime();
 
-	// Call the function from the new file
-	for (auto& enemy : g_Enemies)
+	if (g_Character)
 	{
-		// 1. Update enemy AI/Movement first
-		enemy.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), dt, g_DungeonRooms);
+		// Declare the variables using the character's position
+		float playerWorldX = g_Character->GetWorldX();
+		float playerWorldY = g_Character->GetWorldY();
 
+		for (auto& enemy : g_Enemies)
+		{
+			// Update enemy AI/Movement
+			enemy.Update(playerWorldX, playerWorldY, dt, g_DungeonRooms);
+		}
+
+		// Safely update items with the defined variables
+		g_ItemsManager.Update(playerWorldX, playerWorldY, 0.0f);
 	}
-	g_ItemsManager.Update(playerWorldX, playerWorldY, 0.0f);
 
 	// Debug: Show item count when 'I' is pressed
 	if (AEInputCheckTriggered(AEVK_I))
@@ -432,6 +458,8 @@ void Level_Unload()
 		g_FontId = -1;
 	}
 
+	SettingsMenu_Unload();
+
 	// Release any textures or allocated data inside the player class
 
 	for (auto& enemy : g_Enemies) {
@@ -439,7 +467,7 @@ void Level_Unload()
 	}
 	g_Enemies.clear();
 
-	// 2. Clear the mesh ONCE at the very end
+	// Clear the mesh ONCE at the very end
 	if (g_pUnitSquare) {
 		AEGfxMeshFree(g_pUnitSquare);
 		g_pUnitSquare = nullptr;

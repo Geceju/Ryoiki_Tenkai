@@ -1,8 +1,9 @@
 #include "MainMenu.h"
 #include "SettingsMenu.h"
 #include "GameStateManager.h"
-#include <iostream>
 #include "AEEngine.h"
+#include "AABBCollision.h"
+#include <iostream>
 #include <cmath>
 #include <cstdlib>
 
@@ -23,11 +24,6 @@ static float bgTimer = 0.0f;
 static float bgPlayerX, bgPlayerY, bgEnemyX, bgEnemyY;
 static float bgDirX, bgDirY, bgSpeed = 400.0f, bgTravelDist, bgMaxDist;
 static float g_TotalTime = 0.0f;
-
-static bool IsMouseInButton(float mx, float my, const Button& b) {
-    return (mx >= b.x - (b.scaleX / 2.0f) && mx <= b.x + (b.scaleX / 2.0f) &&
-        my >= b.y - (b.scaleY / 2.0f) && my <= b.y + (b.scaleY / 2.0f));
-}
 
 void MainMenu_Load() {
     AEGfxMeshStart();
@@ -71,9 +67,9 @@ void MainMenu_Update() {
     float winW = (float)AEGfxGetWindowWidth(), winH = (float)AEGfxGetWindowHeight();
     float worldMX = (float)mx - winW / 2.0f, worldMY = winH / 2.0f - (float)my;
 
-    if (IsMouseInButton(worldMX, worldMY, btnPlay) && AEInputCheckTriggered(AEVK_LBUTTON))          gGameStateNext = GS_LEVEL1;
-    if (IsMouseInButton(worldMX, worldMY, btnSettings) && AEInputCheckTriggered(AEVK_LBUTTON))    showSettingsMenu = true;
-    if (IsMouseInButton(worldMX, worldMY, btnExit) && AEInputCheckTriggered(AEVK_LBUTTON))          gGameStateNext = GS_QUIT;
+    if (Collision_PointInButton(worldMX, worldMY, btnPlay.x, btnPlay.y, btnPlay.scaleX, btnPlay.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) gGameStateNext = GS_LEVEL1;
+    if (Collision_PointInButton(worldMX, worldMY, btnSettings.x, btnSettings.y, btnSettings.scaleX, btnSettings.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) showSettingsMenu = true;
+    if (Collision_PointInButton(worldMX, worldMY, btnExit.x, btnExit.y, btnExit.scaleX, btnExit.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) gGameStateNext = GS_QUIT;
 
     // Background logic
     if (!bgIsRunning) {
@@ -125,6 +121,8 @@ void MainMenu_Draw() {
 
     // Restored centering logic within the button drawing helper
     auto DrawBtn = [&](const Button& b, const char* text, float txOffset) {
+        if (g_FontIdMenu < 0) return; // SAFEGUARD: Don't draw if font is destroyed!
+
         AEMtx33Scale(&s, b.scaleX, b.scaleY);
         AEMtx33Trans(&t, b.x, b.y);
         AEMtx33Concat(&final, &t, &s);
@@ -132,7 +130,6 @@ void MainMenu_Draw() {
         AEGfxSetTransform(final.m);
         AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
 
-        // Text Y is calculated relative to the button's Y position to keep it vertically centered
         float textY = (b.y / winHalfH) - 0.015f;
         AEGfxPrint(g_FontIdMenu, (char*)text, txOffset, textY, 1, 0, 0, 0, 1);
         };
@@ -155,8 +152,17 @@ void MainMenu_Draw() {
 void MainMenu_Free() {}
 
 void MainMenu_Unload() {
-    if (pMeshButton) AEGfxMeshFree(pMeshButton);
-    if (g_FontIdMenu >= 0) AEGfxDestroyFont(g_FontIdMenu);
-    if (g_FontIdTitle >= 0) AEGfxDestroyFont(g_FontIdTitle);
+    if (pMeshButton) {
+        AEGfxMeshFree(pMeshButton);
+        pMeshButton = nullptr; // Mark as dead
+    }
+    if (g_FontIdMenu >= 0) {
+        AEGfxDestroyFont(g_FontIdMenu);
+        g_FontIdMenu = -1; // Mark as dead
+    }
+    if (g_FontIdTitle >= 0) {
+        AEGfxDestroyFont(g_FontIdTitle);
+        g_FontIdTitle = -1; // Mark as dead
+    }
     SettingsMenu_Unload();
 }

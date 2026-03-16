@@ -56,7 +56,7 @@ bool Rect::IsIntersect(const Rect& other) const
 Rect Rect::Intersect(const Rect& other) const
 {
     // Construct a new rectangle representing the shared overlapping region between two shapes.
-    // We cast to float to use AE math macros, then cast back to int to store in the Rect.
+    // Cast to float to use AE math macros, then cast back to int to store in the Rect.
     return Rect(
         static_cast<int>(AEMax(static_cast<float>(left), static_cast<float>(other.left))),
         static_cast<int>(AEMax(static_cast<float>(top), static_cast<float>(other.top))),
@@ -69,7 +69,7 @@ AEVec2 Rect::GetCenter() const
 {
     AEVec2 center;
 
-    // Calculate the midpoint. We cast to float first to ensure floating-point division
+    // Calculate the midpoint. Cast to float first to ensure floating-point division
     // occurs, preventing any integer truncation during the average calculation.
     float centerX = static_cast<float>(left + right) * 0.5f;
     float centerY = static_cast<float>(top + bottom) * 0.5f;
@@ -101,7 +101,7 @@ namespace Random
         }
 
         // AERandFloat() returns a float between 0.0 and 1.0. 
-        // We cast the range to float for the math, then truncate to int for the result.
+        // Cast the range to float for the math, then truncate to int for the result.
         float range = static_cast<float>(max - min + 1);
         return min + static_cast<int>(AERandFloat() * range);
     }
