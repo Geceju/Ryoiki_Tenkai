@@ -1,11 +1,12 @@
 #include "Level.h"
-#include "SettingsMenu.h" // Added for global settings access
+#include "SettingsMenu.h"
 #include "RoomGenerator.h"
 #include "jogo.h" 
 #include "GameStateManager.h"
 #include "Enemy.h"
 #include "Items.h"
 #include "Tilesets.h" 
+#include "Inventory.h"
 #include <cstdio> 
 #include <cmath>  
 #include <queue> 
@@ -139,6 +140,7 @@ void Level_Load()
 
 	g_Enemy.Load();
 	g_ItemsManager.InitializeGraphics();
+	g_Inventory.Load();  // ADD THIS
 
 	// Load shared settings menu resources
 	SettingsMenu_Load();
@@ -191,6 +193,8 @@ void Level_Init()
 		g_ItemsInitialized = true;
 	}
 
+	g_Inventory.Init();
+
 	s_ShowSettings = false;
 	SettingsMenu_Initialize();
 }
@@ -215,6 +219,9 @@ void Level_Update()
 	if (AEInputCheckTriggered(AEVK_N)) g_RevealNeighbors = !g_RevealNeighbors;
 	if (AEInputCheckTriggered(AEVK_M)) g_ShowWayfinder = !g_ShowWayfinder;
 	if (AEInputCheckTriggered(AEVK_C)) g_ShowColors = !g_ShowColors;
+
+	// Update inventory (handles number key presses)
+	g_Inventory.Update();  // ADD THIS
 
 	if (g_Character)
 	{
@@ -347,6 +354,9 @@ void Level_Draw()
 		// Restore camera for next frame
 		if (g_Character) AEGfxSetCamPosition(g_Character->GetWorldX(), g_Character->GetWorldY());
 	}
+
+	// Draw inventory last so it appears on top
+	g_Inventory.Draw();
 }
 
 void Level_Free()
@@ -364,5 +374,6 @@ void Level_Unload()
 	if (g_pRectOutline) AEGfxMeshFree(g_pRectOutline);
 	if (g_FontId >= 0) AEGfxDestroyFont(g_FontId);
 	g_Enemy.Unload();
+	g_Inventory.Unload();
 	SettingsMenu_Unload();
 }
