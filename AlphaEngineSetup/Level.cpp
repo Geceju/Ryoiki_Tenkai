@@ -269,6 +269,7 @@ void Level_Init()
 		// Safety: Don't spawn in the Start room
 		if (room->type == RoomType::Start) continue;
 
+		// change to 1, 512 for new map
 		int randCol = Random::Range(1, 14);
 		int randRow = Random::Range(1, 14);
 
