@@ -3,6 +3,7 @@
 #include "GameStateManager.h"
 #include "AEEngine.h"
 #include "AABBCollision.h"
+#include "Leaderboard.h"
 #include <iostream>
 #include <cmath>
 #include <cstdlib>
@@ -11,12 +12,13 @@ struct Button {
     float x, y, scaleX, scaleY, r, g, b;
 };
 
-static Button btnPlay, btnSettings, btnExit;
+static Button btnPlay, btnSettings, btnLeaderboard, btnExit;
 static AEGfxVertexList* pMeshButton = nullptr;
 static s8 g_FontIdMenu = -1;
 static s8 g_FontIdTitle = -1;
 
 static bool showSettingsMenu = false;
+static bool showLeaderboard = false;
 
 // Background animation
 static bool bgIsRunning = false;
@@ -41,16 +43,23 @@ void MainMenu_Initialize() {
     AEGfxSetCamPosition(0.0f, 0.0f);
     float bR = 0.2f, bG = 0.6f, bB = 0.8f;
 
-    btnPlay = { 0.0f, 80.0f, 200.0f, 70.0f, bR, bG, bB };
-    btnSettings = { 0.0f, -10.0f, 200.0f, 70.0f, bR, bG, bB };
-    btnExit = { 0.0f, -100.0f, 200.0f, 70.0f, bR, bG, bB };
+    //btnPlay = { 0.0f, 80.0f, 200.0f, 70.0f, bR, bG, bB };
+    //btnSettings = { 0.0f, -10.0f, 200.0f, 70.0f, bR, bG, bB };
+    //btnExit = { 0.0f, -100.0f, 200.0f, 70.0f, bR, bG, bB };
+
+    btnPlay = { 0.0f, 100.0f, 200.0f, 60.0f, bR, bG, bB };
+    btnSettings = { 0.0f, 20.0f, 200.0f, 60.0f, bR, bG, bB };
+    btnLeaderboard = { 0.0f, -60.0f, 200.0f, 60.0f, bR, bG, bB };
+    btnExit = { 0.0f, -140.0f, 200.0f, 60.0f, bR, bG, bB };
 
     showSettingsMenu = false;
+    showLeaderboard = false;
     bgIsRunning = false;
     bgTimer = 0.0f;
     g_TotalTime = 0.0f;
 
     SettingsMenu_Initialize();
+    LeaderboardSystem::Load();
 }
 
 void MainMenu_Update() {
@@ -67,8 +76,17 @@ void MainMenu_Update() {
     float winW = (float)AEGfxGetWindowWidth(), winH = (float)AEGfxGetWindowHeight();
     float worldMX = (float)mx - winW / 2.0f, worldMY = winH / 2.0f - (float)my;
 
+    // If leaderboard is open, click anywhere to close it
+    if (showLeaderboard) {
+        if (AEInputCheckTriggered(AEVK_LBUTTON) || AEInputCheckTriggered(AEVK_ESCAPE)) {
+            showLeaderboard = false;
+        }
+        return; // Stop updating main menu buttons
+    }
+
     if (Collision_PointInButton(worldMX, worldMY, btnPlay.x, btnPlay.y, btnPlay.scaleX, btnPlay.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) gGameStateNext = GS_LEVEL1;
     if (Collision_PointInButton(worldMX, worldMY, btnSettings.x, btnSettings.y, btnSettings.scaleX, btnSettings.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) showSettingsMenu = true;
+    if (Collision_PointInButton(worldMX, worldMY, btnLeaderboard.x, btnLeaderboard.y, btnLeaderboard.scaleX, btnLeaderboard.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) showLeaderboard = true;
     if (Collision_PointInButton(worldMX, worldMY, btnExit.x, btnExit.y, btnExit.scaleX, btnExit.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) gGameStateNext = GS_QUIT;
 
     // Background logic
@@ -119,7 +137,7 @@ void MainMenu_Draw() {
 
     float winHalfH = (float)AEGfxGetWindowHeight() / 2.0f;
 
-    // Restored centering logic within the button drawing helper
+    // Centering logic within the button drawing helper
     auto DrawBtn = [&](const Button& b, const char* text, float txOffset) {
         if (g_FontIdMenu < 0) return; // SAFEGUARD: Don't draw if font is destroyed!
 
@@ -134,18 +152,76 @@ void MainMenu_Draw() {
         AEGfxPrint(g_FontIdMenu, (char*)text, txOffset, textY, 1, 0, 0, 0, 1);
         };
 
-    // restored specific horizontal offsets for perfect centering
+    // Specific horizontal offsets for perfect centering
     DrawBtn(btnPlay, "Start", -0.035f);
     DrawBtn(btnSettings, "Settings", -0.055f); // balanced offset for "Settings"
+    DrawBtn(btnLeaderboard, "Scores", -0.045f); // Draw new button
     DrawBtn(btnExit, "Exit", -0.025f);
 
-    // Title centered at your tested X coordinate
+    // Title centered at tested X coordinate
     if (g_FontIdTitle >= 0) {
         AEGfxPrint(g_FontIdTitle, (char*)"Enoki Tenkai", -0.35f, 0.6f, 1, 1, 1, 1, 1);
     }
 
     if (showSettingsMenu) {
         SettingsMenu_Draw(false);
+    }
+
+	// Leaderboard Overlay
+    if (showLeaderboard && g_FontIdMenu >= 0){
+        // Draw dark background panel
+        AEMtx33 scale, trans, transform;
+        AEMtx33Scale(&scale, 800.0f, 600.0f);
+        AEMtx33Trans(&trans, 0, 0);
+        AEMtx33Concat(&transform, &trans, &scale);
+
+        AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+        AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 0.9f);
+        AEGfxSetTransform(transform.m);
+        AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
+        AEGfxSetBlendMode(AE_GFX_BM_NONE);
+
+        AEGfxPrint(g_FontIdTitle, (char*)"TOP 10 RUNS", -0.28f, 0.35f, 0.8f, 1.0f, 0.8f, 0.0f, 1.0f);
+
+        const auto& runs = LeaderboardSystem::GetTopRuns();
+        float startY = 0.15f;
+
+        if (runs.empty()) {
+            AEGfxPrint(g_FontIdMenu, (char*)"No runs logged yet!", -0.15f, 0.0f, 1.0f, 0.5f, 0.5f, 0.5f, 1.0f);
+        }
+        else {
+            // Draw Headers once
+            AEGfxPrint(g_FontIdMenu, (char*)"Rank", -0.35f, 0.20f, 0.8f, 0.5f, 0.5f, 0.5f, 1.0f);
+            AEGfxPrint(g_FontIdMenu, (char*)"Name", -0.15f, 0.20f, 0.8f, 0.5f, 0.5f, 0.5f, 1.0f);
+            AEGfxPrint(g_FontIdMenu, (char*)"Level | Time", 0.15f, 0.20f, 0.8f, 0.5f, 0.5f, 0.5f, 1.0f);
+
+            for (size_t i = 0; i < runs.size(); ++i) {
+                int minutes = static_cast<int>(runs[i].timeTaken) / 60;
+                float seconds = fmod(runs[i].timeTaken, 60.0f);
+
+                // Color top 3 yellow, rest white
+                float r = (i < 3) ? 1.0f : 1.0f;
+                float g = (i < 3) ? 1.0f : 1.0f;
+                float b = (i < 3) ? 0.0f : 1.0f;
+
+                float rowY = 0.05f - (i * 0.08f); // Starting lower so headers fit
+
+                // 1. Draw Rank (Fixed at X: -0.35)
+                char rankBuf[16];
+                sprintf_s(rankBuf, "%d.", (int)i + 1);
+                AEGfxPrint(g_FontIdMenu, rankBuf, -0.35f, rowY, 1.0f, r, g, b, 1.0f);
+
+                // 2. Draw Username (Fixed at X: -0.15)
+                char nameBuf[16];
+                sprintf_s(nameBuf, "%s", runs[i].playerName.c_str());
+                AEGfxPrint(g_FontIdMenu, nameBuf, -0.15f, rowY, 1.0f, r, g, b, 1.0f);
+
+                // 3. Draw Time & Level (Fixed at X: 0.15)
+                char timeBuf[32];
+                sprintf_s(timeBuf, "Lvl %d  |  %02d:%05.2f", runs[i].levelReached, minutes, seconds);
+                AEGfxPrint(g_FontIdMenu, timeBuf, 0.15f, rowY, 1.0f, r, g, b, 1.0f);
+            }
+        }
     }
 }
 
@@ -166,3 +242,25 @@ void MainMenu_Unload() {
     }
     SettingsMenu_Unload();
 }
+
+//if (runs.empty()) {
+//    AEGfxPrint(g_FontIdMenu, (char*)"No runs logged yet!", -0.143f, 0.0f, 1.0f, 0.5f, 0.5f, 0.5f, 1.0f);
+//}
+//else {
+//    for (size_t i = 0; i < runs.size(); ++i) {
+//        // Format the time into Minutes : Seconds
+//        int minutes = static_cast<int>(runs[i].timeTaken) / 60;
+//        float seconds = fmod(runs[i].timeTaken, 60.0f);
+
+//        char buffer[64];
+//        sprintf_s(buffer, "%d. Level %d  -  %02d:%05.2f", (int)i + 1, runs[i].levelReached, minutes, seconds);
+
+//        // Color top 3 yellow, rest white
+//        float r = (i < 3) ? 1.0f : 1.0f;
+//        float g = (i < 3) ? 1.0f : 1.0f;
+//        float b = (i < 3) ? 0.0f : 1.0f;
+
+//        AEGfxPrint(g_FontIdMenu, buffer, -0.14f, startY - (i * 0.08f), 1.0f, r, g, b, 1.0f);
+//    }
+//}
+//AEGfxPrint(g_FontIdMenu, (char*)"Click anywhere to close", -0.095f, 0.25f, 0.6f, 0.5f, 0.5f, 0.5f, 1.0f);

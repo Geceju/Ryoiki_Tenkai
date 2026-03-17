@@ -16,6 +16,7 @@
     <ClCompile Include="Enemy.cpp" />
     <ClCompile Include="GameStateManager.cpp" />
     <ClCompile Include="Inventory.cpp" />
+    <ClCompile Include="Leaderboard.cpp" />
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="Items.cpp" />
     <ClCompile Include="jogo.cpp" />
@@ -36,6 +37,7 @@
     <ClInclude Include="GameStateManager.h" />
     <ClInclude Include="Inventory.h" />
     <ClInclude Include="IGenerator.h" />
+    <ClInclude Include="Leaderboard.h" />
     <ClInclude Include="Level.h" />
     <ClInclude Include="Items.h" />
     <ClInclude Include="jogo.h" />
