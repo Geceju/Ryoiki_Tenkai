@@ -3,11 +3,12 @@
 #include "AEEngine.h"
 #include <vector>
 
-// Item types enumeration - ONLY 3 TYPES
+// Item types enumeration - 4 types
 enum class ItemType {
 	POINT,      // Red - Basic points
 	POWER_UP,   // Blue - Temporary boost
-	SLOW_ENEMY  // Purple - Slows enemy down
+	SLOW_ENEMY, // Purple - Slows enemy down
+	KEY         // Yellow - Exit key
 };
 
 // Item structure
@@ -46,14 +47,17 @@ public:
 	// Initialize the items system
 	void Initialize(int gridWidth, int gridHeight, const std::vector<std::vector<int>>& maze, float tileSize = 48.0f);
 
-	// Initialize graphics (call this AFTER engine is initialized)
-	void InitializeGraphics(); // ADD THIS
+	// Initialize graphics
+	void InitializeGraphics();
 
 	// Spawn a specific item
 	void SpawnItem(float x, float y, ItemType type);
 
 	// Spawn items randomly in the maze
 	void SpawnRandomItems(int count, const std::vector<std::vector<int>>& maze);
+
+	// Spawn a key in a random non-start, non-boss room
+	void SpawnKey();
 
 	// Update items (check collection, handle lifetime)
 	void Update(float playerX, float playerY, float deltaTime);

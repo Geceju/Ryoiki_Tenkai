@@ -6,7 +6,7 @@
 #include <ctime>
 #include <iostream>
 
-// Item constructor - ONLY 3 TYPES
+// Item constructor - NOW 4 TYPES
 Item::Item(float posX, float posY, ItemType itemType)
 	: x(posX), y(posY), type(itemType), collected(false),
 	visualRadius(0.20f),        // Small visual size (looks like a dot)
@@ -14,13 +14,13 @@ Item::Item(float posX, float posY, ItemType itemType)
 	lifetime(-1.0f), active(true),
 	color{ 0.0f, 0.0f, 0.0f, 1.0f } {
 
-	// Set color based on item type - ONLY 3 COLORS
+	// Set color based on item type - NOW 4 COLORS
 	switch (type) {
 	case ItemType::POINT:       // RED
 		color[0] = 1.0f;   // R = 100%
 		color[1] = 0.0f;   // G = 0%
 		color[2] = 0.0f;   // B = 0%
-		color[3] = 1.0f;   // A = 100% (Fully opaque)
+		color[3] = 1.0f;   // A = 100%
 		break;
 	case ItemType::POWER_UP:    // BLUE
 		color[0] = 0.0f;   // R = 0%
@@ -29,9 +29,15 @@ Item::Item(float posX, float posY, ItemType itemType)
 		color[3] = 1.0f;   // A = 100%
 		break;
 	case ItemType::SLOW_ENEMY:  // PURPLE
-		color[0] = 1.0f;   // R = 80%
+		color[0] = 1.0f;   // R = 100%
 		color[1] = 0.0f;   // G = 0%
-		color[2] = 1.0f;   // B = 80%
+		color[2] = 1.0f;   // B = 100%
+		color[3] = 1.0f;   // A = 100%
+		break;
+	case ItemType::KEY:         // YELLOW
+		color[0] = 1.0f;   // R = 100%
+		color[1] = 1.0f;   // G = 100%
+		color[2] = 0.0f;   // B = 0%
 		color[3] = 1.0f;   // A = 100%
 		break;
 	default:
@@ -138,9 +144,15 @@ void ItemsManager::SpawnItem(float x, float y, ItemType type) {
 	items.emplace_back(x, y, type);
 
 	// Debug output
-	const char* typeNames[] = { "POINT (RED)", "POWER_UP (BLUE)", "SLOW_ENEMY (PURPLE)" };
+	const char* typeNames[] = { "POINT (RED)", "POWER_UP (BLUE)", "SLOW_ENEMY (PURPLE)", "KEY (YELLOW)" };
 	std::cout << "Spawned " << typeNames[static_cast<int>(type)]
 		<< " at position (" << x << ", " << y << ")\n";
+}
+
+// Spawn a key in a random non-start, non-boss room
+void ItemsManager::SpawnKey() {
+	// This will be called from Level_Init after rooms are generated
+	// The actual spawning will happen in Level_Init
 }
 
 // Helper function to find empty tile
@@ -175,7 +187,7 @@ void ItemsManager::SpawnRandomItems(int count, const std::vector<std::vector<int
 		int y = std::rand() % maze.size();
 
 		if (IsTileEmpty(x, y, maze)) {
-			// Random item type (0-2 for 3 types)
+			// Random item type (0-2 for 3 types - exclude KEY from random spawn)
 			int randomType = std::rand() % 3;
 			ItemType type = static_cast<ItemType>(randomType);
 
@@ -204,13 +216,14 @@ void ItemsManager::Update(float playerX, float playerY, float deltaTime) {
 				case ItemType::POINT:
 					printf("+10 Points! (Added to inventory)\n");
 					break;
-
 				case ItemType::POWER_UP:
 					printf("Power-up collected! (Added to inventory)\n");
 					break;
-
 				case ItemType::SLOW_ENEMY:
 					printf("Enemies slowed! (Added to inventory)\n");
+					break;
+				case ItemType::KEY:
+					printf("KEY collected! You can now exit the dungeon!\n");
 					break;
 				}
 
