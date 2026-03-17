@@ -120,7 +120,11 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="AABBCollision.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="Inventory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="ability.h">
       <Filter>Header Files</Filter>
     </ClInclude>
