@@ -45,4 +45,5 @@ public:
     // --- NEW: A* Helper Methods ---
     Room* GetRoomFromPos(float x, float y, const std::vector<std::unique_ptr<Room>>& rooms);
     void CalculateAStarPath(float targetX, float targetY, const std::vector<std::unique_ptr<Room>>& rooms);
+    bool IsPositionWalkable(float x, float y, const std::vector<std::unique_ptr<Room>>& rooms);
 };
