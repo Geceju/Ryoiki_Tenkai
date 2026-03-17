@@ -52,6 +52,14 @@ public:
 	void UpdateAbilities(float dt, std::vector<SimpleEnemy>& enemy, const ItemsManager& items, const std::vector<std::unique_ptr<Room>>& rooms);
 	void DrawAbilities() const;
 
+	// NEW VISION VARIABLES 
+	float facingAngle;                 // Tracks which way the player is aiming
+	AEGfxVertexList* pVisionMesh;      // The darkness overlay mesh
+	float visionMultiplier;
+
+	void LoadVisionMesh();             // Generates the shadow geometry
+	void DrawVisionOverlay();          // Renders the shadow over the world
+
 private:
 	// Checks specific tile value at coordinates
 	// Return true only if the tile is 0 meaning Floor

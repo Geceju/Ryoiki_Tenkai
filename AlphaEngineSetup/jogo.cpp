@@ -13,6 +13,10 @@ Character::Character(int startX, int startY, float tile)
 	worldY = (static_cast<float>(gridY) * tileSize) + (tileSize * 0.5f);
 	moveSpeed = 200.0f;
 	isMoving = false;
+	// --- NEW ---
+	facingAngle = 0.0f;
+	pVisionMesh = nullptr;
+	visionMultiplier = 1.0f; // <-- ADD THIS
 }
 
 // Destructor calls unload
@@ -37,6 +41,7 @@ void Character::Load()
 
 	// load abilities
 	abilities.Load();
+	LoadVisionMesh();
 }
 
 // Frees the player graphic
@@ -48,6 +53,11 @@ void Character::Unload()
 	{
 		AEGfxMeshFree(pMesh);
 		pMesh = nullptr;
+	}
+	// Free vision mesh if it exists
+	if (pVisionMesh) {
+		AEGfxMeshFree(pVisionMesh);
+		pVisionMesh = nullptr;
 	}
 }
 
@@ -67,6 +77,7 @@ void Character::Update(const std::vector<std::unique_ptr<Room>>& rooms)
 	if (dirX != 0.0f || dirY != 0.0f)
 	{
 		isMoving = true;
+		facingAngle = atan2f(dirY, dirX);
 		// Normalize vector to prevent fast diagonal movement
 		float length = sqrtf(dirX * dirX + dirY * dirY);
 		if (length > 0.0f)
@@ -203,4 +214,89 @@ bool Character::IsPositionWalkable(float x, float y, const std::vector<std::uniq
 	}
 	// Void outside all rooms is treated as a wall
 	return false;
+}
+void Character::LoadVisionMesh()
+{
+	if (pVisionMesh) return;
+
+	AEGfxMeshStart();
+	int segments = 64; // High segment count for a smooth circle
+	float step = (2.0f * 3.14159265f) / segments;
+
+	// --- TWEAK THESE TO CHANGE YOUR FLASHLIGHT ---
+	float ambientRadius = 250.0f * visionMultiplier;
+	float darkRadius = 350.0f * visionMultiplier;
+	// -----------------------------------------------
+	float farRadius = 4000.0f;     // Massive outer bounds to cover the entire screen
+	float coneHalfAngle = (60.0f / 2.0f) * (3.14159265f / 180.0f); // 60-degree vision cone
+
+	for (int i = 0; i < segments; i++)
+	{
+		float a1 = i * step;
+		float a2 = (i + 1) * step;
+
+		// Normalize angles between -PI and PI to easily check our cone
+		float normA1 = a1; if (normA1 > 3.14159265f) normA1 -= 2.0f * 3.14159265f;
+		float normA2 = a2; if (normA2 > 3.14159265f) normA2 -= 2.0f * 3.14159265f;
+
+		// Is this segment inside the flashlight cone?
+		bool cone1 = (fabsf(normA1) <= coneHalfAngle);
+		bool cone2 = (fabsf(normA2) <= coneHalfAngle);
+
+		// Alpha values: 0 = Bright/Transparent, 220 = Dim, 255 = Pitch Black
+		unsigned int alphaCenter1 = cone1 ? 0 : 220;
+		unsigned int alphaCenter2 = cone2 ? 0 : 220;
+		unsigned int alphaAmb1 = cone1 ? 0 : 220;
+		unsigned int alphaAmb2 = cone2 ? 0 : 220;
+		unsigned int alphaDark = 255;
+		unsigned int alphaFar = 255;
+
+		// Convert Alpha to AARRGGBB format (Colors remain 000000 Black)
+		unsigned int cCenter1 = (alphaCenter1 << 24);
+		unsigned int cCenter2 = (alphaCenter2 << 24);
+		unsigned int cAmb1 = (alphaAmb1 << 24);
+		unsigned int cAmb2 = (alphaAmb2 << 24);
+		unsigned int cDark = (alphaDark << 24);
+		unsigned int cFar = (alphaFar << 24);
+
+		// Calculate Ring Coordinates
+		float cx = 0.0f, cy = 0.0f;
+		float a1x = cosf(a1) * ambientRadius, a1y = sinf(a1) * ambientRadius;
+		float a2x = cosf(a2) * ambientRadius, a2y = sinf(a2) * ambientRadius;
+		float d1x = cosf(a1) * darkRadius, d1y = sinf(a1) * darkRadius;
+		float d2x = cosf(a2) * darkRadius, d2y = sinf(a2) * darkRadius;
+		float f1x = cosf(a1) * farRadius, f1y = sinf(a1) * farRadius;
+		float f2x = cosf(a2) * farRadius, f2y = sinf(a2) * farRadius;
+
+		// 1. Center to Ambient (Inner Triangle)
+		AEGfxTriAdd(cx, cy, cCenter1, 0, 0, a1x, a1y, cAmb1, 0, 0, a2x, a2y, cAmb2, 0, 0);
+		// 2. Ambient to Dark (Mid Quad -> Fades out the flashlight smoothly)
+		AEGfxTriAdd(a1x, a1y, cAmb1, 0, 0, d1x, d1y, cDark, 0, 0, a2x, a2y, cAmb2, 0, 0);
+		AEGfxTriAdd(a2x, a2y, cAmb2, 0, 0, d1x, d1y, cDark, 0, 0, d2x, d2y, cDark, 0, 0);
+		// 3. Dark to Far (Outer Quad -> Infinite Pitch Black)
+		AEGfxTriAdd(d1x, d1y, cDark, 0, 0, f1x, f1y, cFar, 0, 0, d2x, d2y, cDark, 0, 0);
+		AEGfxTriAdd(d2x, d2y, cDark, 0, 0, f1x, f1y, cFar, 0, 0, f2x, f2y, cFar, 0, 0);
+	}
+	pVisionMesh = AEGfxMeshEnd();
+}
+
+void Character::DrawVisionOverlay()
+{
+	if (!pVisionMesh) return;
+
+	AEMtx33 scale, rot, trans, transform;
+	AEMtx33Scale(&scale, 1.0f, 1.0f);
+	AEMtx33Rot(&rot, facingAngle); // Rotates the flashlight cone!
+	AEMtx33Trans(&trans, worldX, worldY); // Locks it to the player
+
+	AEMtx33Concat(&transform, &rot, &scale);
+	AEMtx33Concat(&transform, &trans, &transform);
+
+	// Alpha blending MUST be on for the darkness gradient to work!
+	AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+	AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+	AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
+	AEGfxSetTransform(transform.m);
+	AEGfxMeshDraw(pVisionMesh, AE_GFX_MDM_TRIANGLES);
+	AEGfxSetBlendMode(AE_GFX_BM_NONE); // Turn off when done
 }
