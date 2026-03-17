@@ -59,6 +59,7 @@
     </ClCompile>
     <ClCompile Include="AABBCollision.cpp">
     <ClCompile Include="Inventory.cpp">
+    <ClCompile Include="ability.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -116,6 +117,7 @@
     </ClInclude>
     <ClInclude Include="AABBCollision.h">
     <ClInclude Include="Inventory.h">
+    <ClInclude Include="ability.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

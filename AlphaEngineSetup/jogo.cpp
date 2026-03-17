@@ -1,5 +1,6 @@
 #include "jogo.h" 
-#include "Items.h"     
+#include "Items.h"   
+#include "Enemy.h"
 #include <iostream>
 #include <cmath>       
 
@@ -10,7 +11,7 @@ Character::Character(int startX, int startY, float tile)
 	// Centers the world position within the grid tile
 	worldX = (static_cast<float>(gridX) * tileSize) + (tileSize * 0.5f);
 	worldY = (static_cast<float>(gridY) * tileSize) + (tileSize * 0.5f);
-	moveSpeed = 400.0f;
+	moveSpeed = 200.0f;
 	isMoving = false;
 }
 
@@ -33,11 +34,16 @@ void Character::Load()
 	AEGfxTriAdd(-0.5f, -0.5f, 0xFF00FFFF, 0.0f, 1.0f, 0.5f, -0.5f, 0xFF00FFFF, 1.0f, 1.0f, -0.5f, 0.5f, 0xFF00FFFF, 0.0f, 0.0f);
 	AEGfxTriAdd(0.5f, -0.5f, 0xFF00FFFF, 1.0f, 1.0f, 0.5f, 0.5f, 0xFF00FFFF, 1.0f, 0.0f, -0.5f, 0.5f, 0xFF00FFFF, 0.0f, 0.0f);
 	pMesh = AEGfxMeshEnd();
+
+	// load abilities
+	abilities.Load();
 }
 
 // Frees the player graphic
 void Character::Unload()
 {
+	abilities.Unload();
+
 	if (pMesh)
 	{
 		AEGfxMeshFree(pMesh);
@@ -111,6 +117,12 @@ void Character::Update(const std::vector<std::unique_ptr<Room>>& rooms)
 	}
 }
 
+// Abilities
+void Character::UpdateAbilities(float dt, SimpleEnemy& enemy, const ItemsManager& items, const std::vector<std::unique_ptr<Room>>& rooms)
+{
+	abilities.Update(dt, *this, enemy, items, rooms);
+}
+
 // Renders the character mesh
 void Character::Draw()
 {
@@ -136,6 +148,12 @@ void Character::Draw()
 	AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
 	AEGfxSetTransform(transform.m);
 	AEGfxMeshDraw(pMesh, AE_GFX_MDM_TRIANGLES);
+}
+
+// Draw Abilities
+void Character::DrawAbilities() const
+{
+	abilities.DrawGuide();
 }
 
 // Teleport function

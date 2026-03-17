@@ -20,6 +20,9 @@ public:
     float GetWorldX() const { return worldX; }
     float GetWorldY() const { return worldY; }
     void SetState(EnemyState newState) { currentState = newState; }
+    // Abilties
+    void Stun(float duration);
+    bool IsStunned() const { return stunTimer > 0.0f; }
 
 private:
     float worldX, worldY;
@@ -45,4 +48,5 @@ public:
     // --- NEW: A* Helper Methods ---
     Room* GetRoomFromPos(float x, float y, const std::vector<std::unique_ptr<Room>>& rooms);
     void CalculateAStarPath(float targetX, float targetY, const std::vector<std::unique_ptr<Room>>& rooms);
+    float stunTimer;
 };

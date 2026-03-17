@@ -5,8 +5,10 @@
 #include <vector>
 #include <memory>
 #include "Room.h" 
+#include "ability.h"
 
 class ItemsManager;
+class SimpleEnemy;
 
 // Handles player movement collision and rendering
 class Character
@@ -43,6 +45,13 @@ public:
 	// Logic for item interaction
 	void CheckItemCollection(ItemsManager& itemsManager);
 
+	// Abilities
+	float GetMoveSpeed() const { return moveSpeed; }
+	void SetMoveSpeed(float speed) { moveSpeed = speed; }
+
+	void UpdateAbilities(float dt, SimpleEnemy& enemy, const ItemsManager& items, const std::vector<std::unique_ptr<Room>>& rooms);
+	void DrawAbilities() const;
+
 private:
 	// Checks specific tile value at coordinates
 	// Return true only if the tile is 0 meaning Floor
@@ -62,6 +71,9 @@ private:
 
 	// Visual mesh
 	AEGfxVertexList* pMesh;
+
+	// Abilities
+	PlayerAbilities abilities;
 };
 
 #endif

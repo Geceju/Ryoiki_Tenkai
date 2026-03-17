@@ -331,9 +331,12 @@ void Level_Update()
 	// Update inventory (handles number key presses)
 	g_Inventory.Update();  // ADD THIS
 
+	float dt = (float)AEFrameRateControllerGetFrameTime();
+
 	if (g_Character)
 	{
 		g_Character->Update(g_DungeonRooms);
+		g_Character->UpdateAbilities(dt, g_Enemy, g_ItemsManager, g_DungeonRooms);
 		g_Character->CheckItemCollection(g_ItemsManager);
 		AEGfxSetCamPosition(g_Character->GetWorldX(), g_Character->GetWorldY());
 
@@ -382,6 +385,9 @@ void Level_Update()
 		printf("Uncollected items at positions:\n");
 		// You might need to add a method to ItemsManager to iterate items
 	}
+	
+	g_Enemy.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), dt, g_DungeonRooms);
+	g_ItemsManager.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), 0.0f);
 }
 
 void Level_Draw()
@@ -457,7 +463,11 @@ void Level_Draw()
 			AEGfxMeshDraw(itemMesh, AE_GFX_MDM_TRIANGLES);
 		}
 	}
-	if (g_Character) g_Character->Draw();
+	if (g_Character)
+	{
+		g_Character->DrawAbilities();
+		g_Character->Draw();
+	}
 	for (auto& enemy : g_Enemies)
 	{
 		enemy.Draw();

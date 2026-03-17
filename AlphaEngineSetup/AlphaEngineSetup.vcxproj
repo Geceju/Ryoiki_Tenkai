@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AABBCollision.cpp" />
+    <ClCompile Include="ability.cpp" />
     <ClCompile Include="Enemy.cpp" />
     <ClCompile Include="GameStateManager.cpp" />
     <ClCompile Include="Inventory.cpp" />
@@ -30,6 +31,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AABBCollision.h" />
+    <ClInclude Include="ability.h" />
     <ClInclude Include="Enemy.h" />
     <ClInclude Include="GameStateManager.h" />
     <ClInclude Include="Inventory.h" />
