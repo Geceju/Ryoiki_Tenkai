@@ -48,6 +48,7 @@ static bool s_ShowSettings = false;
 
 // Level Transition state
 static bool s_ShowLevelComplete = false;
+static bool s_EnemyContact = false;
 
 /**
  * @brief Draws a rotated and scaled line segment between two points using a unit square mesh.
@@ -242,6 +243,7 @@ void Level_Init()
 			spawnedCount++;
 		}
 	}
+	s_EnemyContact = false;
 
 
 	if (!g_ItemsInitialized)
@@ -344,6 +346,12 @@ void Level_Update()
 		}
 		return; // Stop normal game logic while this menu is open
 	}
+	if (s_EnemyContact) {
+		if (AEInputCheckTriggered(AEVK_BACK)) {
+			gGameStateNext = GS_MAINMENU; // Return to menu
+		}
+		return; // Stop normal game logic while this menu is open
+	}
 
 	// Normal Level Updates
 	if (AEInputCheckTriggered(AEVK_R)) { gGameStateNext = GS_RESTART; printf("Restarting Level...\n"); }
@@ -410,14 +418,21 @@ void Level_Update()
 			}
 		}
 
+
 		// Update Enemies and Items
 		float playerWorldX = g_Character->GetWorldX();
 		float playerWorldY = g_Character->GetWorldY();
+		
 
 		for (auto& enemy : g_Enemies)
 		{
 			// Update enemy AI/Movement
 			enemy.Update(playerWorldX, playerWorldY, dt, g_DungeonRooms);
+			float dx = playerWorldX - enemy.GetWorldX();
+			float dy = playerWorldY - enemy.GetWorldY();
+			float distToPlayer = dx * dx + dy * dy;
+			// 625 = 25^2
+			if (distToPlayer < 625) s_EnemyContact = true;
 		}
 
 		// Safely update items with the defined variables
@@ -434,7 +449,6 @@ void Level_Update()
 		printf("Uncollected items at positions:\n");
 	}
 
-	// I deleted the loose g_Enemy and g_ItemsManager update calls down here!
 }
 
 void Level_Draw()
@@ -611,6 +625,32 @@ void Level_Draw()
 			else {
 				AEGfxPrint(g_FontId, (char*)"YOU ESCAPED THE DUNGEON!", -0.26f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f);
 			}
+
+			AEGfxPrint(g_FontId, (char*)"Press [BACKSPACE] to Return to Menu", -0.275f, -0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+		}
+	}
+
+	if (s_EnemyContact)
+	{
+		// Draw a semi-transparent dark background
+		float camX = g_Character ? g_Character->GetWorldX() : 0.0f;
+		float camY = g_Character ? g_Character->GetWorldY() : 0.0f;
+
+		AEMtx33 scale, trans, transform;
+		AEMtx33Scale(&scale, 4000.0f, 4000.0f); // Make it huge to cover the screen
+		AEMtx33Trans(&trans, camX, camY);
+		AEMtx33Concat(&transform, &trans, &scale);
+
+		AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+		AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 0.85f); // 85% opacity black
+		AEGfxSetTransform(transform.m);
+		AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
+		AEGfxSetBlendMode(AE_GFX_BM_NONE);
+
+		// Draw the Text (Using NDC coordinates so it sticks to the screen)
+		if (g_FontId >= 0) {
+			AEGfxPrint(g_FontId, (char*)"You Lose", -0.2f, 0.3f, 1.5f, 1.0f, 0.0f, 0.0f, 1.0f); // Green text
 
 			AEGfxPrint(g_FontId, (char*)"Press [BACKSPACE] to Return to Menu", -0.275f, -0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 		}
