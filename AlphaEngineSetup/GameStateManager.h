@@ -7,7 +7,7 @@ typedef enum
     GS_RESTART,   // Command to re-initialize the current active state
     GS_QUIT,      // Command to terminate the main engine loop
     GS_MAINMENU,  // The interactive menu interface
-    GS_LEVEL1,
+    GS_LEVEL1 = 3, // for some reason this defaulted to int 8 and it messing with gs_level 6
     GS_LEVEL2,
     GS_LEVEL3,
     GS_LEVEL4,
