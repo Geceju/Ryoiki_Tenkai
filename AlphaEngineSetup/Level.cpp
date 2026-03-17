@@ -289,8 +289,7 @@ void Level_Update()
 		// 1. Update enemy AI/Movement first
 		enemy.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), dt, g_DungeonRooms);
 
-	}
-	g_ItemsManager.Update(playerWorldX, playerWorldY, 0.0f);
+	};
 
 	// Debug: Show item count when 'I' is pressed
 	if (AEInputCheckTriggered(AEVK_I))
@@ -378,11 +377,12 @@ void Level_Draw()
 			AEGfxMeshDraw(itemMesh, AE_GFX_MDM_TRIANGLES);
 		}
 	}
-
+	if (g_Character) g_Character->Draw();
 	for (auto& enemy : g_Enemies)
 	{
 		enemy.Draw();
 	}
+
 
 	// Wayfinder
 	if (g_ShowWayfinder && g_BossRoom && g_Character)
