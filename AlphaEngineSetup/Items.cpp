@@ -1,5 +1,6 @@
 // items.cpp
 #include "items.h"
+#include "Inventory.h"
 #include <algorithm>
 #include <cstdlib>
 #include <ctime>
@@ -195,18 +196,21 @@ void ItemsManager::Update(float playerX, float playerY, float deltaTime) {
 				item.collected = true;
 				item.active = false;
 
-				// Item effects
+				// Add to inventory
+				g_Inventory.AddItem(item.type);
+
+				// Item effects (just for feedback)
 				switch (item.type) {
 				case ItemType::POINT:
-					printf("+10 Points!\n");
+					printf("+10 Points! (Added to inventory)\n");
 					break;
 
 				case ItemType::POWER_UP:
-					printf("Power-up collected! Speed increased!\n");
+					printf("Power-up collected! (Added to inventory)\n");
 					break;
 
 				case ItemType::SLOW_ENEMY:
-					printf("Enemies slowed!\n");
+					printf("Enemies slowed! (Added to inventory)\n");
 					break;
 				}
 
