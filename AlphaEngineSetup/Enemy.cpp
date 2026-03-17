@@ -93,8 +93,11 @@ void SimpleEnemy::Update(float playerX, float playerY, float dt, const std::vect
                         currentPathIndex++;
                     }
                     else {
-                        worldX += (px / distToPoint) * speed * dt;
-                        worldY += (py / distToPoint) * speed * dt;
+                        float moveX = (px / distToPoint) * speed * dt;
+                        float moveY = (py / distToPoint) * speed * dt;
+
+                        if (IsPositionWalkable(worldX + moveX, worldY, rooms)) worldX += moveX;
+                        if (IsPositionWalkable(worldX, worldY + moveY, rooms)) worldY += moveY;
                     }
                 }
                 else {
@@ -135,19 +138,26 @@ void SimpleEnemy::Update(float playerX, float playerY, float dt, const std::vect
                 else {
                     float dirX = px / distToPoint;
                     float dirY = py / distToPoint;
-                    worldX += dirX * speed * dt;
-                    worldY += dirY * speed * dt;
+                    float moveX = dirX * speed * dt;
+                    float moveY = dirY * speed * dt;
+
+                    if (IsPositionWalkable(worldX + moveX, worldY, rooms)) worldX += moveX;
+                    if (IsPositionWalkable(worldX, worldY + moveY, rooms)) worldY += moveY;
                 }
             }
             else {
                 // FALLBACK: If A* fails (e.g. player stands on a wall edge), 
                 // nudge the enemy directly toward the player so they don't freeze.
-                float dx = playerX - worldX;
-                float dy = playerY - worldY;
-                float d = sqrtf(dx * dx + dy * dy);
+                float dxFallback = playerX - worldX;
+                float dyFallback = playerY - worldY;
+                float d = sqrtf(dxFallback * dxFallback + dyFallback * dyFallback);
                 if (d > 1.0f) {
-                    worldX += (dx / d) * speed * dt;
-                    worldY += (dy / d) * speed * dt;
+                    // --- SLIDING COLLISION: FALLBACK ---
+                    float moveX = (dxFallback / d) * speed * dt;
+                    float moveY = (dyFallback / d) * speed * dt;
+
+                    if (IsPositionWalkable(worldX + moveX, worldY, rooms)) worldX += moveX;
+                    if (IsPositionWalkable(worldX, worldY + moveY, rooms)) worldY += moveY;
                 }
             }
         }
@@ -228,8 +238,6 @@ void SimpleEnemy::CalculateAStarPath(float targetX, float targetY, const std::ve
     Room* startRoom = GetRoomFromPos(worldX, worldY, rooms);
     Room* targetRoom = GetRoomFromPos(targetX, targetY, rooms);
 
-    // Only run A* if both entities are inside the exact same room
-    if (!startRoom || startRoom != targetRoom) return;
 
     // Convert World space to Grid space
     int startCol = static_cast<int>((worldX - startRoom->rect.left) / startRoom->tileSize);
@@ -335,4 +343,35 @@ void SimpleEnemy::CalculateAStarPath(float targetX, float targetY, const std::ve
         // A* builds the path backwards, so we reverse it
         std::reverse(currentPath.begin(), currentPath.end());
     }
+}
+
+bool SimpleEnemy::IsPositionWalkable(float x, float y, const std::vector<std::unique_ptr<Room>>& rooms)
+{
+    for (const auto& room : rooms)
+    {
+        // Check if inside Room Bounding Box
+        if (x >= (float)room->rect.left && x <= (float)room->rect.right &&
+            y >= (float)room->rect.bottom && y <= (float)room->rect.top)
+        {
+            // Calculate which tile grid index the entity is on
+            // Local Position equals World Pos minus Room Top Left
+            float localX = x - (float)room->rect.left;
+            float localY = (float)room->rect.top - y;
+
+            int tileX = static_cast<int>(localX / room->tileSize);
+            int tileY = static_cast<int>(localY / room->tileSize);
+
+            // Check the specific tile value where 0 is Floor and 1 is Wall
+            if (room->GetTile(tileX, tileY) == 0)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+    }
+    // Void outside all rooms is treated as a wall
+    return false;
 }
