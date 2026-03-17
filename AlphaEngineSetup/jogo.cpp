@@ -118,7 +118,7 @@ void Character::Update(const std::vector<std::unique_ptr<Room>>& rooms)
 }
 
 // Abilities
-void Character::UpdateAbilities(float dt, SimpleEnemy& enemy, const ItemsManager& items, const std::vector<std::unique_ptr<Room>>& rooms)
+void Character::UpdateAbilities(float dt, std::vector<SimpleEnemy>& enemy, const ItemsManager& items, const std::vector<std::unique_ptr<Room>>& rooms)
 {
 	abilities.Update(dt, *this, enemy, items, rooms);
 }

@@ -40,10 +40,14 @@ static bool g_RevealNeighbors = true;
 static Room* g_BossRoom = nullptr;
 static bool g_ShowWayfinder = false;
 static bool g_ShowColors = false;
+static bool g_ShowKeyLocation = false;
 static s8 g_FontId = -1;
 
 // Settings/Pause state
 static bool s_ShowSettings = false;
+
+// Level Transition state
+static bool s_ShowLevelComplete = false;
 
 /**
  * @brief Draws a rotated and scaled line segment between two points using a unit square mesh.
@@ -302,6 +306,7 @@ void Level_Init()
 
 	g_Inventory.Init();
 
+	s_ShowLevelComplete = false; // Reset the transition screen for the new level
 	s_ShowSettings = false;
 	SettingsMenu_Initialize();
 }
@@ -320,6 +325,25 @@ void Level_Update()
 		SettingsMenu_Update(s_ShowSettings);
 		return; // Stop game logic while menu is open
 	}
+	// Handle Level Complete Menu
+	if (s_ShowLevelComplete) {
+		// Simple keyboard controls for the transition screen
+		if (AEInputCheckTriggered(AEVK_RETURN)) {
+			// Move to the next level by incrementing the enum!
+			if (gGameStateCurr < GS_LEVEL6) {
+				gGameStateNext = (GAME_STATE)(gGameStateCurr + 1);
+			}
+			else {
+				// Beat Level 6! Game won!
+				gGameStateNext = GS_MAINMENU;
+				printf("YOU BEAT THE GAME!\n");
+			}
+		}
+		if (AEInputCheckTriggered(AEVK_BACK)) {
+			gGameStateNext = GS_MAINMENU; // Return to menu
+		}
+		return; // Stop normal game logic while this menu is open
+	}
 
 	// Normal Level Updates
 	if (AEInputCheckTriggered(AEVK_R)) { gGameStateNext = GS_RESTART; printf("Restarting Level...\n"); }
@@ -327,17 +351,48 @@ void Level_Update()
 	if (AEInputCheckTriggered(AEVK_N)) { g_RevealNeighbors = !g_RevealNeighbors; printf("Reveal Neighbors: %s\n", g_RevealNeighbors ? "ON" : "OFF"); }
 	if (AEInputCheckTriggered(AEVK_M)) { g_ShowWayfinder = !g_ShowWayfinder; printf("Show Wayfinder: %s\n", g_ShowWayfinder ? "ON" : "OFF"); }
 	if (AEInputCheckTriggered(AEVK_C)) { g_ShowColors = !g_ShowColors; printf("Show Colors: %s\n", g_ShowColors ? "ON" : "OFF"); }
+		
+	// Show the key's location on the map when 'K' is pressed
+	if (AEInputCheckTriggered(AEVK_K))
+	{
+		g_ShowKeyLocation = !g_ShowKeyLocation;
+		printf("Key Tracker: %s\n", g_ShowKeyLocation ? "ON" : "OFF");
+	}
 
 	// Update inventory (handles number key presses)
-	g_Inventory.Update();  // ADD THIS
+	g_Inventory.Update();
 
 	float dt = (float)AEFrameRateControllerGetFrameTime();
 
 	if (g_Character)
 	{
+		// Check Exit Door Collision
+		if (g_BossRoom) {
+			float px = g_Character->GetWorldX();
+			float py = g_Character->GetWorldY();
+
+			// Check if player is inside the Boss/Exit Room boundaries
+			if (px >= g_BossRoom->rect.left && px <= g_BossRoom->rect.right &&
+				py >= g_BossRoom->rect.bottom && py <= g_BossRoom->rect.top)
+			{
+				if (AEInputCheckTriggered(AEVK_E)) {
+					if (g_Inventory.HasKey()) {
+						printf("Door Unlocked!\n");
+						s_ShowLevelComplete = true; // Pause game and show the menu
+					}
+					else {
+						printf("The door is locked. You need a Key!\n");
+					}
+				}
+			}
+		}
+
 		g_Character->Update(g_DungeonRooms);
-		g_Character->UpdateAbilities(dt, g_Enemy, g_ItemsManager, g_DungeonRooms);
+
+		// Make sure Character class expects a vector here now
+		g_Character->UpdateAbilities(dt, g_Enemies, g_ItemsManager, g_DungeonRooms);
 		g_Character->CheckItemCollection(g_ItemsManager);
+
 		AEGfxSetCamPosition(g_Character->GetWorldX(), g_Character->GetWorldY());
 
 		// Room Discovery
@@ -354,13 +409,8 @@ void Level_Update()
 				break;
 			}
 		}
-	}
 
-	float dt = (float)AEFrameRateControllerGetFrameTime();
-
-	if (g_Character)
-	{
-		// Declare the variables using the character's position
+		// Update Enemies and Items
 		float playerWorldX = g_Character->GetWorldX();
 		float playerWorldY = g_Character->GetWorldY();
 
@@ -381,13 +431,10 @@ void Level_Update()
 			g_ItemsManager.GetCollectedCount(),
 			g_ItemsManager.GetTotalCount());
 
-		// Debug: Print positions of all uncollected items
 		printf("Uncollected items at positions:\n");
-		// You might need to add a method to ItemsManager to iterate items
 	}
-	
-	g_Enemy.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), dt, g_DungeonRooms);
-	g_ItemsManager.Update(g_Character->GetWorldX(), g_Character->GetWorldY(), 0.0f);
+
+	// I deleted the loose g_Enemy and g_ItemsManager update calls down here!
 }
 
 void Level_Draw()
@@ -473,8 +520,7 @@ void Level_Draw()
 		enemy.Draw();
 	}
 
-
-	// Wayfinder
+	// Wayfinder to boss room
 	if (g_ShowWayfinder && g_BossRoom && g_Character)
 	{
 		float px = g_Character->GetWorldX(), py = g_Character->GetWorldY();
@@ -494,6 +540,38 @@ void Level_Draw()
 		}
 	}
 
+	// Wayfinder to key location
+	if (g_ShowKeyLocation && g_Character)
+	{
+		for (const auto& item : g_ItemsManager.GetItems())
+		{
+			// Using 'item.collected', 'item.x', and 'item.y' based on Items.cpp
+			// Change them to isCollected/worldX if you recently renamed them.
+			if (item.type == ItemType::KEY && !item.collected)
+			{
+				// Draw a blue line straight from the player to the key
+				DrawLineSegment(
+					g_Character->GetWorldX(), g_Character->GetWorldY(),
+					item.x, item.y,
+					5.0f, 1.0f, 0.0f, 1.0f, 0.7f // 5px thick, Purple, 70% opacity
+				);
+
+				// Draw a massive yellow highlight box around the key itself
+				AEMtx33 scale, trans, transform;
+				AEMtx33Scale(&scale, 120.0f, 120.0f); // Make it big enough to easily spot
+				AEMtx33Trans(&trans, item.x, item.y);
+				AEMtx33Concat(&transform, &trans, &scale);
+
+				AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+				AEGfxSetColorToMultiply(1.0f, 1.0f, 0.0f, 1.0f); // Solid Yellow
+				AEGfxSetTransform(transform.m);
+				AEGfxMeshDraw(g_pRectOutline, AE_GFX_MDM_LINES_STRIP); // Use your hollow rect mesh
+
+				break; // We found the key, no need to keep checking items
+			}
+		}
+	}
+
 	// Settings Overlay
 	if (s_ShowSettings)
 	{
@@ -504,6 +582,39 @@ void Level_Draw()
 
 	// Draw inventory last so it appears on top
 	g_Inventory.Draw();
+
+	if (s_ShowLevelComplete)
+	{
+		// Draw a semi-transparent dark background
+		float camX = g_Character ? g_Character->GetWorldX() : 0.0f;
+		float camY = g_Character ? g_Character->GetWorldY() : 0.0f;
+
+		AEMtx33 scale, trans, transform;
+		AEMtx33Scale(&scale, 4000.0f, 4000.0f); // Make it huge to cover the screen
+		AEMtx33Trans(&trans, camX, camY);
+		AEMtx33Concat(&transform, &trans, &scale);
+
+		AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+		AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 0.85f); // 85% opacity black
+		AEGfxSetTransform(transform.m);
+		AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
+		AEGfxSetBlendMode(AE_GFX_BM_NONE);
+
+		// Draw the Text (Using NDC coordinates so it sticks to the screen)
+		if (g_FontId >= 0) {
+			AEGfxPrint(g_FontId, (char*)"LEVEL COMPLETE!", -0.2f, 0.3f, 1.5f, 0.0f, 1.0f, 0.0f, 1.0f); // Green text
+
+			if (gGameStateCurr < GS_LEVEL6) {
+				AEGfxPrint(g_FontId, (char*)"Press [ENTER] to Descend Deeper", -0.235f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+			}
+			else {
+				AEGfxPrint(g_FontId, (char*)"YOU ESCAPED THE DUNGEON!", -0.26f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f);
+			}
+
+			AEGfxPrint(g_FontId, (char*)"Press [BACKSPACE] to Return to Menu", -0.275f, -0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+		}
+	}
 }
 
 void Level_Free()

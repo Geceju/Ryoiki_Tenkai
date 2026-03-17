@@ -73,9 +73,12 @@ void PlayerAbilities::ActivateSpeedBoost(Character& player)
     speedBoostTimer = 30.0f;
 }
 
-void PlayerAbilities::ActivateStun(SimpleEnemy& enemy)
+void PlayerAbilities::ActivateStun(std::vector<SimpleEnemy>& enemy)
 {
-    enemy.Stun(10.0f);
+    for (auto& e : enemy)
+    {
+        e.Stun(10.0f);
+    }
 }
 
 bool PlayerAbilities::FindNearestItem(const Character& player,
@@ -273,7 +276,7 @@ void PlayerAbilities::ActivateGuide(const Character& player,
 
 void PlayerAbilities::Update(float dt,
     Character& player,
-    SimpleEnemy& enemy,
+    std::vector<SimpleEnemy>& enemy,
     const ItemsManager& items,
     const std::vector<std::unique_ptr<Room>>& rooms)
 {

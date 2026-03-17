@@ -49,7 +49,7 @@ public:
 	float GetMoveSpeed() const { return moveSpeed; }
 	void SetMoveSpeed(float speed) { moveSpeed = speed; }
 
-	void UpdateAbilities(float dt, SimpleEnemy& enemy, const ItemsManager& items, const std::vector<std::unique_ptr<Room>>& rooms);
+	void UpdateAbilities(float dt, std::vector<SimpleEnemy>& enemy, const ItemsManager& items, const std::vector<std::unique_ptr<Room>>& rooms);
 	void DrawAbilities() const;
 
 private:

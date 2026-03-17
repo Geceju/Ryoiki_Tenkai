@@ -22,14 +22,14 @@ public:
 
     void Update(float dt,
         Character& player,
-        SimpleEnemy& enemy,
+        std::vector<SimpleEnemy>& enemy,
         const ItemsManager& items,
         const std::vector<std::unique_ptr<Room>>& rooms);
 
     void DrawGuide() const;
 
     void ActivateSpeedBoost(Character& player);
-    void ActivateStun(SimpleEnemy& enemy);
+    void ActivateStun(std::vector<SimpleEnemy>& enemy);
     void ActivateGuide(const Character& player,
         const ItemsManager& items,
         const std::vector<std::unique_ptr<Room>>& rooms);
