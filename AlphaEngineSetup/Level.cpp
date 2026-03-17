@@ -1,12 +1,13 @@
 #include "Level.h"
-#include "SettingsMenu.h" // Added for global settings access
+#include "SettingsMenu.h"
 #include "RoomGenerator.h"
 #include "jogo.h" 
 #include "GameStateManager.h"
 #include "Enemy.h"
 #include "Items.h"
-#include "Tilesets.h"
 #include "AABBCollision.h"
+#include "Tilesets.h" 
+#include "Inventory.h"
 #include <cstdio> 
 #include <cmath>  
 #include <queue> 
@@ -161,6 +162,7 @@ void Level_Load()
 
 	// Initialize items graphics (AFTER engine is ready)
 	g_ItemsManager.InitializeGraphics();
+	g_Inventory.Load();  // ADD THIS
 
 	// Load shared settings menu resources
 	SettingsMenu_Load();
@@ -199,7 +201,7 @@ void Level_Init()
 		}
 	}
 	// --- SPAWN ENEMIES ---
-    g_Enemies.clear();
+	g_Enemies.clear();
 
 	int totalEnemiesToSpawn = 3;
 	int spawnedCount = 0;
@@ -227,8 +229,8 @@ void Level_Init()
 
 			// Dice roll for chase duration (e.g., 1d6 roll + base time)
 			int diceRoll = Random::Range(1, 6);
-			
-			newEnemy.SetChaseDuration(10.0f + static_cast<float>(diceRoll)*5.0f);
+
+			newEnemy.SetChaseDuration(10.0f + static_cast<float>(diceRoll) * 5.0f);
 
 			newEnemy.currentState = EnemyState::PATROL; // Start patrolling
 
@@ -236,21 +238,69 @@ void Level_Init()
 			spawnedCount++;
 		}
 	}
-	
+
 
 	if (!g_ItemsInitialized)
 	{
+		// Spawn regular items (3 types)
 		for (const auto& room : g_DungeonRooms)
 		{
 			if (room->type == RoomType::Start || room->type == RoomType::Boss) continue;
 			if (std::rand() % 100 < 30)
 			{
-				int randomType = std::rand() % 3;
+				int randomType = std::rand() % 3; // Only 0-2 for regular items
 				g_ItemsManager.SpawnItem(room->rect.GetCenter().x, room->rect.GetCenter().y, (ItemType)randomType);
 			}
 		}
+
+		// --- SPAWN A KEY in a random non-start, non-boss room ---
+		std::vector<Room*> eligibleRooms;
+		for (const auto& room : g_DungeonRooms)
+		{
+			if (room->type != RoomType::Start && room->type != RoomType::Boss)
+			{
+				eligibleRooms.push_back(room.get());
+			}
+		}
+
+		if (!eligibleRooms.empty())
+		{
+			int randomRoomIndex = std::rand() % eligibleRooms.size();
+			Room* keyRoom = eligibleRooms[randomRoomIndex];
+
+			// Find a valid floor tile in that room
+			int attempts = 0;
+			bool keyPlaced = false;
+
+			while (!keyPlaced && attempts < 100)
+			{
+				int tileX = std::rand() % 16; // Assuming 16x16 rooms
+				int tileY = std::rand() % 16;
+
+				if (keyRoom->tileMap[tileY][tileX] == 0) // Floor tile
+				{
+					float keyX = keyRoom->rect.left + (tileX * keyRoom->tileSize) + (keyRoom->tileSize * 0.5f);
+					float keyY = keyRoom->rect.top - (tileY * keyRoom->tileSize) - (keyRoom->tileSize * 0.5f);
+
+					g_ItemsManager.SpawnItem(keyX, keyY, ItemType::KEY);
+					keyPlaced = true;
+					printf("Key spawned in room at (%f, %f)\n", keyX, keyY);
+				}
+				attempts++;
+			}
+
+			if (!keyPlaced)
+			{
+				// Fallback: place key at room center
+				g_ItemsManager.SpawnItem(keyRoom->rect.GetCenter().x, keyRoom->rect.GetCenter().y, ItemType::KEY);
+				printf("Key spawned at room center\n");
+			}
+		}
+
 		g_ItemsInitialized = true;
 	}
+
+	g_Inventory.Init();
 
 	s_ShowSettings = false;
 	SettingsMenu_Initialize();
@@ -277,6 +327,9 @@ void Level_Update()
 	if (AEInputCheckTriggered(AEVK_N)) { g_RevealNeighbors = !g_RevealNeighbors; printf("Reveal Neighbors: %s\n", g_RevealNeighbors ? "ON" : "OFF"); }
 	if (AEInputCheckTriggered(AEVK_M)) { g_ShowWayfinder = !g_ShowWayfinder; printf("Show Wayfinder: %s\n", g_ShowWayfinder ? "ON" : "OFF"); }
 	if (AEInputCheckTriggered(AEVK_C)) { g_ShowColors = !g_ShowColors; printf("Show Colors: %s\n", g_ShowColors ? "ON" : "OFF"); }
+
+	// Update inventory (handles number key presses)
+	g_Inventory.Update();  // ADD THIS
 
 	if (g_Character)
 	{
@@ -404,11 +457,12 @@ void Level_Draw()
 			AEGfxMeshDraw(itemMesh, AE_GFX_MDM_TRIANGLES);
 		}
 	}
-
+	if (g_Character) g_Character->Draw();
 	for (auto& enemy : g_Enemies)
 	{
 		enemy.Draw();
 	}
+
 
 	// Wayfinder
 	if (g_ShowWayfinder && g_BossRoom && g_Character)
@@ -437,6 +491,9 @@ void Level_Draw()
 		// Restore camera for next frame
 		if (g_Character) AEGfxSetCamPosition(g_Character->GetWorldX(), g_Character->GetWorldY());
 	}
+
+	// Draw inventory last so it appears on top
+	g_Inventory.Draw();
 }
 
 void Level_Free()
@@ -472,4 +529,7 @@ void Level_Unload()
 		AEGfxMeshFree(g_pUnitSquare);
 		g_pUnitSquare = nullptr;
 	}
+
+	g_Inventory.Unload();
+	SettingsMenu_Unload();
 }

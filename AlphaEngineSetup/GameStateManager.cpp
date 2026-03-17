@@ -64,6 +64,17 @@ void GSM_Update()
 			break;
 
 		case GS_LEVEL1:
+
+		case GS_LEVEL2:
+
+		case GS_LEVEL3:
+
+		case GS_LEVEL4:
+
+		case GS_LEVEL5:
+
+		case GS_LEVEL6:
+
 			GameStateLoad = Level_Load;
 			GameStateInit = Level_Init;
 			GameStateUpdate = Level_Update;

@@ -58,6 +58,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="AABBCollision.cpp">
+    <ClCompile Include="Inventory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -114,6 +115,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="AABBCollision.h">
+    <ClInclude Include="Inventory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
