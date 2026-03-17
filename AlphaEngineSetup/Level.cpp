@@ -183,7 +183,7 @@ void Level_Init()
 		}
 	}
 	// --- SPAWN ENEMIES ---
-    g_Enemies.clear();
+	g_Enemies.clear();
 
 	int totalEnemiesToSpawn = 3;
 	int spawnedCount = 0;
@@ -211,8 +211,8 @@ void Level_Init()
 
 			// Dice roll for chase duration (e.g., 1d6 roll + base time)
 			int diceRoll = Random::Range(1, 6);
-			
-			newEnemy.SetChaseDuration(10.0f + static_cast<float>(diceRoll)*5.0f);
+
+			newEnemy.SetChaseDuration(10.0f + static_cast<float>(diceRoll) * 5.0f);
 
 			newEnemy.currentState = EnemyState::PATROL; // Start patrolling
 
@@ -220,19 +220,65 @@ void Level_Init()
 			spawnedCount++;
 		}
 	}
-	
+
 
 	if (!g_ItemsInitialized)
 	{
+		// Spawn regular items (3 types)
 		for (const auto& room : g_DungeonRooms)
 		{
 			if (room->type == RoomType::Start || room->type == RoomType::Boss) continue;
 			if (std::rand() % 100 < 30)
 			{
-				int randomType = std::rand() % 3;
+				int randomType = std::rand() % 3; // Only 0-2 for regular items
 				g_ItemsManager.SpawnItem(room->rect.GetCenter().x, room->rect.GetCenter().y, (ItemType)randomType);
 			}
 		}
+
+		// --- SPAWN A KEY in a random non-start, non-boss room ---
+		std::vector<Room*> eligibleRooms;
+		for (const auto& room : g_DungeonRooms)
+		{
+			if (room->type != RoomType::Start && room->type != RoomType::Boss)
+			{
+				eligibleRooms.push_back(room.get());
+			}
+		}
+
+		if (!eligibleRooms.empty())
+		{
+			int randomRoomIndex = std::rand() % eligibleRooms.size();
+			Room* keyRoom = eligibleRooms[randomRoomIndex];
+
+			// Find a valid floor tile in that room
+			int attempts = 0;
+			bool keyPlaced = false;
+
+			while (!keyPlaced && attempts < 100)
+			{
+				int tileX = std::rand() % 16; // Assuming 16x16 rooms
+				int tileY = std::rand() % 16;
+
+				if (keyRoom->tileMap[tileY][tileX] == 0) // Floor tile
+				{
+					float keyX = keyRoom->rect.left + (tileX * keyRoom->tileSize) + (keyRoom->tileSize * 0.5f);
+					float keyY = keyRoom->rect.top - (tileY * keyRoom->tileSize) - (keyRoom->tileSize * 0.5f);
+
+					g_ItemsManager.SpawnItem(keyX, keyY, ItemType::KEY);
+					keyPlaced = true;
+					printf("Key spawned in room at (%f, %f)\n", keyX, keyY);
+				}
+				attempts++;
+			}
+
+			if (!keyPlaced)
+			{
+				// Fallback: place key at room center
+				g_ItemsManager.SpawnItem(keyRoom->rect.GetCenter().x, keyRoom->rect.GetCenter().y, ItemType::KEY);
+				printf("Key spawned at room center\n");
+			}
+		}
+
 		g_ItemsInitialized = true;
 	}
 

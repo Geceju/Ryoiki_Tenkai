@@ -11,7 +11,7 @@ Inventory::Inventory()
 	, pItemMesh(nullptr)
 	, fontId(-1) {
 
-	// Initialize all slots
+	// Initialize all slots (now 4 slots)
 	for (int i = 0; i < HOTBAR_SIZE; ++i) {
 		slots[i] = InventorySlot();
 	}
@@ -89,7 +89,7 @@ void Inventory::CreateMeshes() {
 }
 
 void Inventory::Update() {
-	// Check for number key presses (1, 2, 3)
+	// Check for number key presses (1, 2, 3, 4)
 	if (AEInputCheckTriggered(AEVK_1)) {
 		UseItem(0);
 	}
@@ -98,6 +98,9 @@ void Inventory::Update() {
 	}
 	else if (AEInputCheckTriggered(AEVK_3)) {
 		UseItem(2);
+	}
+	else if (AEInputCheckTriggered(AEVK_4)) {
+		UseItem(3);  // Slot 4 for key
 	}
 }
 
@@ -113,7 +116,6 @@ void Inventory::Draw() {
 	int windowHeight = AEGfxGetWindowHeight();
 
 	// Calculate starting X position (bottom-left with offset)
-	// We add camera position to make it follow the camera
 	float startX = camX - (windowWidth * 0.5f) + X_OFFSET;
 	float startY = camY - (windowHeight * 0.5f) + Y_OFFSET;
 
@@ -165,6 +167,9 @@ void Inventory::Draw() {
 			case ItemType::SLOW_ENEMY:
 				AEGfxSetColorToMultiply(1.0f, 0.0f, 1.0f, 1.0f); // Purple
 				break;
+			case ItemType::KEY:
+				AEGfxSetColorToMultiply(1.0f, 1.0f, 0.0f, 1.0f); // Yellow
+				break;
 			}
 			AEGfxSetTransform(transform.m);
 			AEGfxMeshDraw(pItemMesh, AE_GFX_MDM_TRIANGLES);
@@ -181,19 +186,17 @@ void Inventory::Draw() {
 			char numText[4];
 			sprintf_s(numText, "%d", i + 1);
 
-			// Convert world position to screen space for text
-			// Screen space: -1 to 1, with origin at center
 			float textX = (slotX + SLOT_SIZE * 0.5f - camX) / (windowWidth * 0.5f);
 			float textY = (slotY + SLOT_SIZE * 0.8f - camY) / (windowHeight * 0.5f);
 
 			AEGfxPrint(fontId, numText, textX, textY, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 
 			// Draw item count at the BOTTOM RIGHT of the box if more than 1
-			if (slots[i].isActive && slots[i].count > 1) {
+			// Keys shouldn't stack, but keep this for other items
+			if (slots[i].isActive && slots[i].count > 1 && slots[i].itemType != ItemType::KEY) {
 				char countText[8];
 				sprintf_s(countText, "%d", slots[i].count);
 
-				// Position at bottom right
 				float countX = (slotX + SLOT_SIZE * 0.8f - camX) / (windowWidth * 0.5f);
 				float countY = (slotY + SLOT_SIZE * 0.2f - camY) / (windowHeight * 0.5f);
 
@@ -204,8 +207,24 @@ void Inventory::Draw() {
 }
 
 void Inventory::AddItem(ItemType type) {
-	// Try to stack with existing item of same type
-	for (int i = 0; i < HOTBAR_SIZE; ++i) {
+	// Special handling for KEY - always go to slot 4 (index 3)
+	if (type == ItemType::KEY) {
+		// Key always goes to slot 4
+		if (!slots[3].isActive) {
+			slots[3].isActive = true;
+			slots[3].itemType = type;
+			slots[3].count = 1;
+			printf("KEY added to slot 4!\n");
+		}
+		else {
+			// Shouldn't happen - only one key
+			printf("You already have the key!\n");
+		}
+		return;
+	}
+
+	// For other items, try to stack with existing item of same type
+	for (int i = 0; i < HOTBAR_SIZE - 1; ++i) { // Exclude slot 4 (key slot)
 		if (slots[i].isActive && slots[i].itemType == type) {
 			slots[i].count++;
 			printf("Added to slot %d, now have %d\n", i + 1, slots[i].count);
@@ -213,8 +232,8 @@ void Inventory::AddItem(ItemType type) {
 		}
 	}
 
-	// Find empty slot
-	for (int i = 0; i < HOTBAR_SIZE; ++i) {
+	// Find empty slot (excluding slot 4 which is reserved for key)
+	for (int i = 0; i < HOTBAR_SIZE - 1; ++i) {
 		if (!slots[i].isActive) {
 			slots[i].isActive = true;
 			slots[i].itemType = type;
@@ -233,6 +252,12 @@ bool Inventory::UseItem(int slotIndex) {
 	InventorySlot& slot = slots[slotIndex];
 
 	if (!slot.isActive || slot.count <= 0) return false;
+
+	// Don't allow using the key - it's just for exiting
+	if (slot.itemType == ItemType::KEY) {
+		printf("Press E near the exit to use the key!\n");
+		return false;
+	}
 
 	slot.count--;
 	selectedSlot = slotIndex;
@@ -256,4 +281,8 @@ bool Inventory::UseItem(int slotIndex) {
 	}
 
 	return true;
+}
+
+bool Inventory::HasKey() const {
+	return slots[3].isActive && slots[3].itemType == ItemType::KEY && slots[3].count > 0;
 }

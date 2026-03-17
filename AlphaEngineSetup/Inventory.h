@@ -16,7 +16,7 @@ struct InventorySlot {
 
 class Inventory {
 private:
-	static constexpr int HOTBAR_SIZE = 3;
+	static constexpr int HOTBAR_SIZE = 4;  // CHANGED FROM 3 TO 4
 	static constexpr float SLOT_SIZE = 64.0f;      // Size of each slot in pixels
 	static constexpr float SLOT_SPACING = 8.0f;    // Space between slots
 	static constexpr float Y_OFFSET = 50.0f;       // Distance from bottom of screen
@@ -43,6 +43,7 @@ public:
 
 	void AddItem(ItemType type);
 	bool UseItem(int slotIndex);
+	bool HasKey() const;  // Check if player has the key
 
 private:
 	void CreateMeshes();
