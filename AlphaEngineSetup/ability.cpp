@@ -7,6 +7,14 @@
 #include <map>
 #include <algorithm>
 
+/*
+handles 3 abilties:
+1. speed boost -> increases player speed
+2. stun enemies -> stun all enemies
+3. guide line to nearest item
+*/
+
+// Constructors
 PlayerAbilities::PlayerAbilities()
     : speedBoostTimer(0.0f),
     guideTimer(0.0f),
@@ -20,11 +28,13 @@ PlayerAbilities::PlayerAbilities()
 {
 }
 
+// Destructor
 PlayerAbilities::~PlayerAbilities()
 {
     Unload();
 }
 
+// mesh for guide line
 void PlayerAbilities::Load()
 {
     if (!pGuideMesh)
@@ -33,6 +43,7 @@ void PlayerAbilities::Load()
     }
 }
 
+// mesh free logic
 void PlayerAbilities::Unload()
 {
     guidePathPoints.clear();
@@ -44,6 +55,7 @@ void PlayerAbilities::Unload()
     }
 }
 
+// resuable triangle mesh for guide lines
 void PlayerAbilities::CreateGuideMesh()
 {
     AEGfxMeshStart();
@@ -61,6 +73,7 @@ void PlayerAbilities::CreateGuideMesh()
     pGuideMesh = AEGfxMeshEnd();
 }
 
+// Ability 1 (speed boost)
 void PlayerAbilities::ActivateSpeedBoost(Character& player)
 {
     if (!speedBoostApplied)
@@ -73,6 +86,8 @@ void PlayerAbilities::ActivateSpeedBoost(Character& player)
     speedBoostTimer = 30.0f;
 }
 
+// Ability 2 (stun enemy)
+//  * Vacinity checking logic required so that only 1 enemy would be stun *
 void PlayerAbilities::ActivateStun(std::vector<SimpleEnemy>& enemy)
 {
     for (auto& e : enemy)
@@ -81,16 +96,19 @@ void PlayerAbilities::ActivateStun(std::vector<SimpleEnemy>& enemy)
     }
 }
 
+// Ability 3 (item detection BFS)
 bool PlayerAbilities::FindNearestItem(const Character& player,
     const ItemsManager& items,
     float& outX,
     float& outY) const
 {
+    // get all avaliable items from item manager
     const std::vector<Item>& allItems = items.GetItems();
 
     bool found = false;
     float bestDistSq = 0.0f;
 
+    //  store shortest distance found
     for (const Item& item : allItems)
     {
         if (item.collected || !item.active)
@@ -98,6 +116,7 @@ bool PlayerAbilities::FindNearestItem(const Character& player,
 
         float dx = item.x - player.GetWorldX();
         float dy = item.y - player.GetWorldY();
+        // squared distance (for optimization)
         float distSq = dx * dx + dy * dy;
 
         if (!found || distSq < bestDistSq)
@@ -112,6 +131,7 @@ bool PlayerAbilities::FindNearestItem(const Character& player,
     return found;
 }
 
+// world coordinates -> tile grid
 bool PlayerAbilities::WorldToTile(float worldX, float worldY,
     const std::vector<std::unique_ptr<Room>>& rooms,
     int& outTileX, int& outTileY) const
@@ -138,6 +158,7 @@ bool PlayerAbilities::WorldToTile(float worldX, float worldY,
     return false;
 }
 
+// tile grid -> world coordinates
 AEVec2 PlayerAbilities::TileToWorld(int tileX, int tileY, float tileSize) const
 {
     AEVec2 result;

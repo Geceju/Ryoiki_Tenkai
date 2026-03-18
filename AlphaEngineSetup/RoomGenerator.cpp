@@ -5,7 +5,7 @@
 #include <memory>
 #include <stack>
 #include <set>
-
+#include <numeric>
 #include "RoomGenerator.h"
 #include "utils.h"
 #include "Tilesets.h"
@@ -183,10 +183,10 @@ std::vector<std::unique_ptr<Room>> RoomGenerator::Generate(int width, int height
             }
 
             // locate extreme coordinates to find corners
-            float minX = 1000000.0f;
-            float maxX = -1000000.0f;
-            float minY = 1000000.0f;
-            float maxY = -1000000.0f;
+            float minX = FLT_MAX;
+            float maxX = FLT_MIN; 
+            float minY = FLT_MAX;
+            float maxY = FLT_MIN;
 
             for (const auto& room : rooms)
             {
