@@ -353,7 +353,7 @@ void Level_Init()
 			}
 		}
 
-		// --- SPAWN 3 KEYS in random rooms (all go to slot 4) ---
+		// --- SPAWN 3 KEYS in random rooms (which does not include start and boss/end room) ---
 		std::vector<Room*> eligibleRooms;
 		for (const auto& room : g_DungeonRooms)
 		{
@@ -402,7 +402,7 @@ void Level_Init()
 				keysSpawned++;
 				printf("Key %d spawned at room center (Fallback)\n", keysSpawned);
 			}
-			// don't spawn multiple keys in same room
+			// prevents spawning of multiple keys in same room
 			eligibleRooms.erase(eligibleRooms.begin() + randomRoomIndex);
 		}
 
