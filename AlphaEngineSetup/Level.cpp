@@ -35,6 +35,8 @@ static std::unique_ptr<Character> g_Character = nullptr;
 // enemies
 static std::vector<SimpleEnemy> g_Enemies;
 static int g_Difficulty = 1;
+static int lives = 3;
+static float invun_timer = 0.0f;
 // END ENTITY DATA
 
 // level state
@@ -486,12 +488,6 @@ void Level_Update()
 		}
 		return;
 	}
-	if (s_EnemyContact) {
-		if (AEInputCheckTriggered(AEVK_BACK)) {
-			gGameStateNext = GS_MAINMENU; // Return to menu
-		}
-		return; // Stop normal game logic while this menu is open
-	}
 
 	float dt = (float)AEFrameRateControllerGetFrameTime();
 	g_RunTimer += dt;
@@ -586,9 +582,26 @@ void Level_Update()
 			float dy = playerWorldY - enemy.GetWorldY();
 			float distToPlayer = dx * dx + dy * dy;
 			// 625 = 25^2
-			if (distToPlayer < 625) s_EnemyContact = true;
+			if (distToPlayer < 625 && !s_EnemyContact) {
+				s_EnemyContact = true;
+				lives--;
+				g_Character->TriggerStun(g_Enemies);
+			}
+		}
+		if (lives <= 0) {
+			if (AEInputCheckTriggered(AEVK_BACK)) {
+				gGameStateNext = GS_MAINMENU; // Return to menu
+			}
+			return; // Stop normal game logic while this menu is open
 		}
 
+		if (s_EnemyContact) {
+			invun_timer += dt;
+			if (invun_timer >= 2.0f) {
+				s_EnemyContact = false;
+				invun_timer = 0.0f;
+			}
+		}
 		// Safely update items with the defined variables
 		g_ItemsManager.Update(playerWorldX, playerWorldY, 0.0f);
 	}
@@ -682,7 +695,6 @@ void Level_Draw()
 	{
 		enemy.Draw();
 	}
-
 	// --- NEW: DRAW THE DARKNESS OVERLAY HERE ---
 	if (g_Character) {
 		g_Character->DrawVisionOverlay();
@@ -756,6 +768,18 @@ void Level_Draw()
 	// Draw inventory last so it appears on top
 	g_Inventory.Draw();
 
+	//draw lives
+	if (g_FontId >= 0)
+	{
+		char livesText[16];
+		// Formats the string: "Lives: 3"
+		sprintf_s(livesText, "Lives: %d", lives);
+
+		// AEGfxPrint(fontId, string, x, y, scale, r, g, b, a)
+		// x = 0.7f (Right side), y = 0.9f (Top)
+		AEGfxPrint(g_FontId, livesText, 0.7f, 0.9f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f);
+	}
+
 	if (s_ShowLevelComplete)
 	{
 		// Draw a semi-transparent dark background
@@ -824,7 +848,7 @@ void Level_Draw()
 		}
 	}
 
-	if (s_EnemyContact)
+	if (lives <= 0)
 	{
 		// Draw a semi-transparent dark background
 		float camX = g_Character ? g_Character->GetWorldX() : 0.0f;

@@ -1,3 +1,6 @@
+#ifndef ENEMY
+#define ENEMY
+
 #pragma once 
 #include "AEEngine.h"       
 #include "RoomGenerator.h"   
@@ -51,3 +54,4 @@ public:
     float stunTimer;
     bool IsPositionWalkable(float x, float y, const std::vector<std::unique_ptr<Room>>& rooms);
 };
+#endif
