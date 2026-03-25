@@ -300,3 +300,7 @@ void Character::DrawVisionOverlay()
 	AEGfxMeshDraw(pVisionMesh, AE_GFX_MDM_TRIANGLES);
 	AEGfxSetBlendMode(AE_GFX_BM_NONE); // Turn off when done
 }
+
+void Character::TriggerStun(std::vector<SimpleEnemy>& enemy) {
+	Character::abilities.ActivateStun(enemy);
+}

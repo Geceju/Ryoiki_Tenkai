@@ -51,6 +51,7 @@ public:
 
 	void UpdateAbilities(float dt, std::vector<SimpleEnemy>& enemy, const ItemsManager& items, const std::vector<std::unique_ptr<Room>>& rooms);
 	void DrawAbilities() const;
+	void TriggerStun(std::vector<SimpleEnemy>& enemy);
 
 	// NEW VISION VARIABLES 
 	float facingAngle;                 // Tracks which way the player is aiming
