@@ -662,22 +662,8 @@ void Level_Draw()
 	}
 
 	// Draw Items
-	AEGfxVertexList* itemMesh = g_ItemsManager.GetItemMesh();
-	if (itemMesh)
-	{
-		const auto& allItems = g_ItemsManager.GetItems();
-		for (const auto& item : allItems)
-		{
-			if (item.collected || !item.active) continue;
-			AEMtx33 scale, trans, transform;
-			AEMtx33Scale(&scale, item.visualRadius * 100.0f, item.visualRadius * 100.0f);
-			AEMtx33Trans(&trans, item.x, item.y);
-			AEMtx33Concat(&transform, &trans, &scale);
-			AEGfxSetColorToMultiply(item.color[0], item.color[1], item.color[2], item.color[3]);
-			AEGfxSetTransform(transform.m);
-			AEGfxMeshDraw(itemMesh, AE_GFX_MDM_TRIANGLES);
-		}
-	}
+// Draw Items (Now uses the official textured Draw function in Items.cpp!)
+	g_ItemsManager.Draw();
 	for (auto& enemy : g_Enemies)
 	{
 		enemy.Draw();

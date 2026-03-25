@@ -17,6 +17,9 @@ static AEGfxVertexList* pMeshButton = nullptr;
 static s8 g_FontIdMenu = -1;
 static s8 g_FontIdTitle = -1;
 
+static AEGfxTexture* pBgPlayerTexture = nullptr;
+static AEGfxTexture* pBgEnemyTexture = nullptr;
+
 static bool showSettingsMenu = false;
 static bool showLeaderboard = false;
 
@@ -35,6 +38,8 @@ void MainMenu_Load() {
 
     g_FontIdMenu = AEGfxCreateFont("Assets/exo2-regular.ttf", 24);
     g_FontIdTitle = AEGfxCreateFont("Assets/exo2-regular.ttf", 96);
+    pBgPlayerTexture = AEGfxTextureLoad("Assets/Assets/jogo.png");
+    pBgEnemyTexture = AEGfxTextureLoad("Assets/Assets/enemy.png");
 
     SettingsMenu_Load();
 }
@@ -122,17 +127,75 @@ void MainMenu_Draw() {
         float bP = fabsf(sinf(g_TotalTime * 15.0f)) * 10.0f;
         float bE = fabsf(sinf(g_TotalTime * 15.0f - 1.0f)) * 10.0f;
         AEMtx33Rot(&r, atan2f(bgDirY, bgDirX));
-        AEMtx33Scale(&s, 40, 40);
+        AEMtx33Scale(&s, 70, 70);
 
-        // Fleeing Player
+        // --- UPDATED: Fleeing Player ---
         AEMtx33Trans(&t, bgPlayerX, bgPlayerY + bP);
         AEMtx33Concat(&final, &t, &r); AEMtx33Concat(&final, &final, &s);
-        AEGfxSetColorToMultiply(0, 1, 1, 1); AEGfxSetTransform(final.m); AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
 
-        // Pursuing Enemy
+        if (pBgPlayerTexture != nullptr) {
+            // SUCCESS! Set up the exact render state from the demo:
+            AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
+            AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
+            AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
+
+            AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+
+            // --- THE MISSING PIECE! ---
+            AEGfxSetTransparency(1.0f);
+            // --------------------------
+
+            // Use integers 0, 0 instead of floats
+            AEGfxTextureSet(pBgPlayerTexture, 0, 0);
+        }
+        else {
+            // FAILED! Draw Magenta.
+            AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+            AEGfxSetColorToMultiply(1.0f, 0.0f, 1.0f, 1.0f);
+            AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
+            AEGfxSetBlendMode(AE_GFX_BM_NONE);
+            AEGfxTextureSet(nullptr, 0, 0);
+        }
+
+        AEGfxSetTransform(final.m);
+        AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
+
+        // Pursuing Enemy (Remains a Red Square)
         AEMtx33Trans(&t, bgEnemyX, bgEnemyY + bE);
         AEMtx33Concat(&final, &t, &r); AEMtx33Concat(&final, &final, &s);
-        AEGfxSetColorToMultiply(1, 0, 0, 1); AEGfxSetTransform(final.m); AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
+
+        if (pBgEnemyTexture != nullptr) {
+            // SUCCESS! Set up the texture state
+            AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
+
+            // Set to pure white to display original image
+            AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
+            AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
+
+            AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+            AEGfxSetTransparency(1.0f);
+            AEGfxTextureSet(pBgEnemyTexture, 0, 0);
+        }
+        else {
+            // FAILED! Draw a solid red square as a fallback
+            AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+            AEGfxSetColorToMultiply(1.0f, 0.0f, 0.0f, 1.0f);
+            AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
+            AEGfxSetBlendMode(AE_GFX_BM_NONE);
+            AEGfxTextureSet(nullptr, 0, 0);
+        }
+
+        AEGfxSetTransform(final.m);
+        AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
+
+        // 2. THEN RESET back to normal colors for the rest of the Menu UI
+        AEGfxTextureSet(nullptr, 0, 0);
+        AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+        AEGfxSetBlendMode(AE_GFX_BM_NONE);
+
+        //AEGfxSetColorToMultiply(1, 0, 0, 1);
+        //AEGfxSetTransform(final.m);
+        //AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
     }
 
     float winHalfH = (float)AEGfxGetWindowHeight() / 2.0f;
@@ -239,6 +302,14 @@ void MainMenu_Unload() {
     if (g_FontIdTitle >= 0) {
         AEGfxDestroyFont(g_FontIdTitle);
         g_FontIdTitle = -1; // Mark as dead
+    }
+    if (pBgPlayerTexture) {
+        AEGfxTextureUnload(pBgPlayerTexture);
+        pBgPlayerTexture = nullptr;
+    }
+    if (pBgEnemyTexture) {
+        AEGfxTextureUnload(pBgEnemyTexture);
+        pBgEnemyTexture = nullptr;
     }
     SettingsMenu_Unload();
 }

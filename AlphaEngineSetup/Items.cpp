@@ -6,6 +6,11 @@
 #include <ctime>
 #include <iostream>
 
+static AEGfxTexture* texRedMushroom = nullptr;
+static AEGfxTexture* texBlueMushroom = nullptr;
+static AEGfxTexture* texGreenMushroom = nullptr;
+static AEGfxTexture* texBabyCarrot = nullptr;
+
 // Item constructor - NOW 4 TYPES
 Item::Item(float posX, float posY, ItemType itemType)
 	: x(posX), y(posY), type(itemType), collected(false),
@@ -59,8 +64,18 @@ bool Item::CheckCollection(float playerX, float playerY) const {
 }
 
 // Draw the item
+// Draw the item
 void Item::Draw(AEGfxVertexList* pMesh) const {
 	if (collected || !active) return;
+
+	// 1. Pick the correct texture based on the item's Type
+	AEGfxTexture* texToDraw = nullptr;
+	switch (type) {
+	case ItemType::POINT:       texToDraw = texRedMushroom; break;
+	case ItemType::POWER_UP:    texToDraw = texBlueMushroom; break;
+	case ItemType::SLOW_ENEMY:  texToDraw = texGreenMushroom; break;
+	case ItemType::KEY:         texToDraw = texBabyCarrot; break;
+	}
 
 	// Use world coordinates
 	float drawX = x;
@@ -68,17 +83,29 @@ void Item::Draw(AEGfxVertexList* pMesh) const {
 
 	AEMtx33 scale, trans, transform;
 
-	// Use visualRadius for drawing (keeps items small on screen)
-	// Multiply by 2.0f to convert radius to diameter for scaling
-	AEMtx33Scale(&scale, visualRadius * 2.0f, visualRadius * 2.0f);
+	// Bumped the scale multiplier to 150.0f so textures are easily visible on the map
+	AEMtx33Scale(&scale, visualRadius * 250.0f, visualRadius * 250.0f);
 	AEMtx33Trans(&trans, drawX, drawY);
 	AEMtx33Concat(&transform, &trans, &scale);
 
-	// Use COLOR mode
-	AEGfxSetRenderMode(AE_GFX_RM_COLOR);
-	AEGfxSetColorToMultiply(color[0], color[1], color[2], color[3]);
+	// 2. Setup rendering state for Textures with Alpha Blending
+	AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+	AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
+	AEGfxSetTransparency(1.0f);
+
+	// Use 1.0f for RGB to show the texture's true colors, but KEEP color[3] for fading!
+	AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, color[3]);
+	AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
+
+	// 3. Bind and Draw
+	AEGfxTextureSet(texToDraw, 0, 0);
 	AEGfxSetTransform(transform.m);
 	AEGfxMeshDraw(pMesh, AE_GFX_MDM_TRIANGLES);
+
+	// 4. Reset rendering state for the rest of the game
+	AEGfxTextureSet(nullptr, 0, 0);
+	AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+	AEGfxSetBlendMode(AE_GFX_BM_NONE);
 }
 
 // ItemsManager implementation
@@ -94,37 +121,31 @@ void ItemsManager::InitializeGraphics() {
 
 // Destructor
 ItemsManager::~ItemsManager() {
-	// 1. Explicitly clear the vector to call destructors on all 'Item' objects
 	items.clear();
-
-	// 2. Force the vector to release its internal capacity
 	items.shrink_to_fit();
 
-	// 3. Free the GPU mesh
-	if (pItemMesh) {
-		AEGfxMeshFree(pItemMesh);
-		pItemMesh = nullptr;
-	}
+	if (pItemMesh) { AEGfxMeshFree(pItemMesh); pItemMesh = nullptr; }
+
+	// Unload textures
+	if (texRedMushroom) { AEGfxTextureUnload(texRedMushroom); texRedMushroom = nullptr; }
+	if (texBlueMushroom) { AEGfxTextureUnload(texBlueMushroom); texBlueMushroom = nullptr; }
+	if (texGreenMushroom) { AEGfxTextureUnload(texGreenMushroom); texGreenMushroom = nullptr; }
+	if (texBabyCarrot) { AEGfxTextureUnload(texBabyCarrot); texBabyCarrot = nullptr; }
 }
 
 // Create item mesh
 void ItemsManager::CreateItemMesh() {
-	// Create a SIMPLE square mesh for items
 	AEGfxMeshStart();
-
-	// Simple 1x1 square with WHITE vertices
-	AEGfxTriAdd(
-		-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f,
-		0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
-		-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f
-	);
-	AEGfxTriAdd(
-		0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
-		0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f,
-		-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f
-	);
-
+	// PURE WHITE MESH
+	AEGfxTriAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f, 0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+	AEGfxTriAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, 0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
 	pItemMesh = AEGfxMeshEnd();
+
+	// Load Textures (Adjust path if needed!)
+	if (!texRedMushroom) texRedMushroom = AEGfxTextureLoad("Assets/Assets/redmushroom.png");
+	if (!texBlueMushroom) texBlueMushroom = AEGfxTextureLoad("Assets/Assets/bluemushroom.png");
+	if (!texGreenMushroom) texGreenMushroom = AEGfxTextureLoad("Assets/Assets/greenmushroom.png");
+	if (!texBabyCarrot) texBabyCarrot = AEGfxTextureLoad("Assets/Assets/babycarrot.png");
 }
 
 // Initialize the items system

@@ -1,6 +1,11 @@
 #include "Inventory.h"
 #include <cstdio>
 
+static AEGfxTexture* texInvRedMushroom = nullptr;
+static AEGfxTexture* texInvBlueMushroom = nullptr;
+static AEGfxTexture* texInvGreenMushroom = nullptr;
+static AEGfxTexture* texInvBabyCarrot = nullptr;
+
 // Define the global inventory instance
 Inventory g_Inventory;
 
@@ -27,7 +32,15 @@ void Inventory::Load() {
 	}
 
 	CreateMeshes();
+
+	// --- ADD THIS: Load the textures for the UI ---
+	if (!texInvRedMushroom) texInvRedMushroom = AEGfxTextureLoad("Assets/Assets/redmushroom.png");
+	if (!texInvBlueMushroom) texInvBlueMushroom = AEGfxTextureLoad("Assets/Assets/bluemushroom.png");
+	if (!texInvGreenMushroom) texInvGreenMushroom = AEGfxTextureLoad("Assets/Assets/greenmushroom.png");
+	if (!texInvBabyCarrot) texInvBabyCarrot = AEGfxTextureLoad("Assets/Assets/babycarrot.png");
 }
+
+
 
 void Inventory::Init() {
 	selectedSlot = 0;
@@ -56,22 +69,16 @@ void Inventory::Init() {
 }
 
 void Inventory::Unload() {
-	if (pSlotMesh) {
-		AEGfxMeshFree(pSlotMesh);
-		pSlotMesh = nullptr;
-	}
-	if (pSelectedMesh) {
-		AEGfxMeshFree(pSelectedMesh);
-		pSelectedMesh = nullptr;
-	}
-	if (pItemMesh) {
-		AEGfxMeshFree(pItemMesh);
-		pItemMesh = nullptr;
-	}
-	if (fontId >= 0) {
-		AEGfxDestroyFont(fontId);
-		fontId = -1;
-	}
+	if (pSlotMesh) { AEGfxMeshFree(pSlotMesh); pSlotMesh = nullptr; }
+	if (pSelectedMesh) { AEGfxMeshFree(pSelectedMesh); pSelectedMesh = nullptr; }
+	if (pItemMesh) { AEGfxMeshFree(pItemMesh); pItemMesh = nullptr; }
+	if (fontId >= 0) { AEGfxDestroyFont(fontId); fontId = -1; }
+
+	// --- ADD THIS: Free the UI textures ---
+	if (texInvRedMushroom) { AEGfxTextureUnload(texInvRedMushroom); texInvRedMushroom = nullptr; }
+	if (texInvBlueMushroom) { AEGfxTextureUnload(texInvBlueMushroom); texInvBlueMushroom = nullptr; }
+	if (texInvGreenMushroom) { AEGfxTextureUnload(texInvGreenMushroom); texInvGreenMushroom = nullptr; }
+	if (texInvBabyCarrot) { AEGfxTextureUnload(texInvBabyCarrot); texInvBabyCarrot = nullptr; }
 }
 
 void Inventory::CreateMeshes() {
@@ -160,39 +167,52 @@ void Inventory::Draw() {
 
 		// --- DRAW ITEM (Solid if we have it, Faded if we don't) ---
 
-		// Setup size and position for the item
-		AEMtx33Scale(&scale, SLOT_SIZE * 0.6f, SLOT_SIZE * 0.6f);
+		// Setup size and position for the item (Scaled up slightly to fit the box beautifully)
+		AEMtx33Scale(&scale, SLOT_SIZE * 0.9f, SLOT_SIZE * 0.9f);
 		AEMtx33Trans(&trans, worldX, worldY);
 		AEMtx33Concat(&transform, &trans, &scale);
 
 		// Check if the player currently has the item in this slot
 		bool hasItem = (slots[i].isActive && slots[i].count > 0);
 
-		// Full opacity if owned, 30% opacity if empty
+		// Full opacity if owned, 30% opacity and darkened if empty
 		float alpha = hasItem ? 1.0f : 0.3f;
-		float r = 1.0f, g = 1.0f, b = 1.0f;
+		float colorTint = hasItem ? 1.0f : 0.5f; // Multiplies RGB by 0.5 to make it look grayed-out
 
-		// Set color based on the fixed item type for this slot
+		// Select the correct texture
+		AEGfxTexture* texToDraw = nullptr;
 		switch (slots[i].itemType) {
-		case ItemType::POWER_UP:   r = 0.0f; g = 0.0f; b = 1.0f; break; // Blue
-		case ItemType::SLOW_ENEMY: r = 1.0f; g = 0.0f; b = 1.0f; break; // Purple
-		case ItemType::POINT:      r = 1.0f; g = 0.0f; b = 0.0f; break; // Red
-		case ItemType::KEY:        r = 1.0f; g = 1.0f; b = 0.0f; break; // Yellow
+		case ItemType::POWER_UP:   texToDraw = texInvBlueMushroom; break;
+		case ItemType::SLOW_ENEMY: texToDraw = texInvGreenMushroom; break;
+		case ItemType::POINT:      texToDraw = texInvRedMushroom; break;
+		case ItemType::KEY:        texToDraw = texInvBabyCarrot; break;
 		}
 
-		// If empty, darken the RGB values to make it look grayed-out
-		if (!hasItem) {
-			r *= 0.5f;
-			g *= 0.5f;
-			b *= 0.5f;
-		}
-
-		// Draw it! (Alpha blending MUST be enabled to see the 30% transparency)
+		// Draw it! 
 		AEGfxSetBlendMode(AE_GFX_BM_BLEND);
-		AEGfxSetColorToMultiply(r, g, b, alpha);
+
+		if (texToDraw) {
+			AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
+			AEGfxSetTransparency(1.0f);
+			// Apply the tint and alpha fade so empty slots look disabled
+			AEGfxSetColorToMultiply(colorTint, colorTint, colorTint, alpha);
+			AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
+			AEGfxTextureSet(texToDraw, 0, 0);
+		}
+		else {
+			// Safety fallback if the texture pointer is null
+			AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+			AEGfxSetColorToMultiply(1.0f, 0.0f, 1.0f, alpha);
+		}
+
 		AEGfxSetTransform(transform.m);
 		AEGfxMeshDraw(pItemMesh, AE_GFX_MDM_TRIANGLES);
-		AEGfxSetBlendMode(AE_GFX_BM_NONE); // Turn blend mode back off just in case
+
+		// Reset Engine State
+		AEGfxTextureSet(nullptr, 0, 0);
+		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+		AEGfxSetBlendMode(AE_GFX_BM_NONE);
+		// -------------------------------------------------------------
 	}
 
 	// Draw numbers and counts on top of slots

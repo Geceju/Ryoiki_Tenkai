@@ -3,6 +3,8 @@
 #include <queue>
 #include <algorithm>
 
+static AEGfxTexture* s_pEnemyTexture = nullptr;
+
 SimpleEnemy::SimpleEnemy()
     : worldX(0), worldY(0), startX(0), startY(0),
     speed(200.0f), detectionRange(500.0f), giveUpRange(150.0f),
@@ -19,10 +21,16 @@ SimpleEnemy::~SimpleEnemy()
 void SimpleEnemy::Load()
 {
     if (pMesh) return;
+
+    // Load the texture once
+    if (!s_pEnemyTexture) {
+        s_pEnemyTexture = AEGfxTextureLoad("Assets/Assets/enemy.png"); // Adjust path if needed
+    }
+
     AEGfxMeshStart();
-    // Red Square Mesh
-    AEGfxTriAdd(-0.5f, -0.5f, 0xFF0000FF, 0.0f, 1.0f, 0.5f, -0.5f, 0xFF0000FF, 1.0f, 1.0f, -0.5f, 0.5f, 0xFF0000FF, 0.0f, 0.0f);
-    AEGfxTriAdd(0.5f, -0.5f, 0xFF0000FF, 1.0f, 1.0f, 0.5f, 0.5f, 0xFF0000FF, 1.0f, 0.0f, -0.5f, 0.5f, 0xFF0000FF, 0.0f, 0.0f);
+    // PURE WHITE MESH
+    AEGfxTriAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f, 0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+    AEGfxTriAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, 0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
     pMesh = AEGfxMeshEnd();
 }
 
@@ -196,25 +204,37 @@ void SimpleEnemy::Draw()
 {
     if (!pMesh) return;
 
-    // Change color based on state for visual feedback
+    // --- SETUP TEXTURE RENDERING ---
+    AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+    AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
+    AEGfxSetTransparency(1.0f);
+    AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
+    AEGfxTextureSet(s_pEnemyTexture, 0, 0);
+
+    // Keep your state colors to tint the enemy sprite!
     if (IsStunned())
         AEGfxSetColorToMultiply(0.0f, 0.5f, 1.0f, 1.0f);
     else if (currentState == EnemyState::IDLE)
-        AEGfxSetColorToMultiply(0.5f, 0.5f, 0.5f, 1.0f); // Grey (Sleeping)
+        AEGfxSetColorToMultiply(0.5f, 0.5f, 0.5f, 1.0f);
     else if (currentState == EnemyState::PATROL)
-        AEGfxSetColorToMultiply(0.0f, 1.0f, 0.0f, 1.0f);
+        AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f); // Pure white while patrolling
     else if (currentState == EnemyState::CHASE)
-        AEGfxSetColorToMultiply(1.0f, 0.2f, 0.2f, 1.0f);
+        AEGfxSetColorToMultiply(1.0f, 0.2f, 0.2f, 1.0f); // Angry red tint!
     else if (currentState == EnemyState::RETURN)
         AEGfxSetColorToMultiply(1.0f, 1.0f, 0.0f, 1.0f);
 
     AEMtx33 scale, trans, transform;
-    AEMtx33Scale(&scale, 25.0f, 25.0f);
+    AEMtx33Scale(&scale, 70.0f, 70.0f); // Made slightly bigger for the sprite
     AEMtx33Trans(&trans, worldX, worldY);
     AEMtx33Concat(&transform, &trans, &scale);
 
     AEGfxSetTransform(transform.m);
     AEGfxMeshDraw(pMesh, AE_GFX_MDM_TRIANGLES);
+
+    // --- RESET ---
+    AEGfxTextureSet(nullptr, 0, 0);
+    AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+    AEGfxSetBlendMode(AE_GFX_BM_NONE);
 }
 
 bool SimpleEnemy::IsPosValid(float x, float y, const std::vector<std::unique_ptr<Room>>& rooms)

@@ -28,33 +28,18 @@ Character::~Character()
 // Creates the player graphic
 void Character::Load()
 {
-	if (pMesh != nullptr)
-	{
-		return;
-	}
+	if (pMesh != nullptr) return;
 
+	// 1. Load the texture (Make sure the path matches your folder exactly!)
 	pTexture = AEGfxTextureLoad("Assets/Assets/jogo.png");
 
-	// --- ADD THIS DIAGNOSTIC CHECK ---
-	if (pTexture == nullptr)
-	{
-		std::cout << "\n====================================\n";
-		std::cout << "ERROR: Failed to load jogo.png!" << "\n";
-		std::cout << "The engine cannot find the file at that path." << "\n";
-		std::cout << "====================================\n\n";
-	}
-	else
-	{
-		std::cout << "\nSUCCESS: jogo.png loaded perfectly!\n\n";
-	}
-
 	AEGfxMeshStart();
-	// Create a square mesh with center origin
-	AEGfxTriAdd(-0.5f, -0.5f, 0xFF00FFFF, 0.0f, 1.0f, 0.5f, -0.5f, 0xFF00FFFF, 1.0f, 1.0f, -0.5f, 0.5f, 0xFF00FFFF, 0.0f, 0.0f);
-	AEGfxTriAdd(0.5f, -0.5f, 0xFF00FFFF, 1.0f, 1.0f, 0.5f, 0.5f, 0xFF00FFFF, 1.0f, 0.0f, -0.5f, 0.5f, 0xFF00FFFF, 0.0f, 0.0f);
+	// 2. PURE WHITE MESH (0xFFFFFFFF) so the texture's true colors show up
+	AEGfxTriAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f, 0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+	AEGfxTriAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, 0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
 	pMesh = AEGfxMeshEnd();
 
-	// load abilities
+	// Load abilities and vision mesh
 	abilities.Load();
 	LoadVisionMesh();
 }
@@ -159,10 +144,7 @@ void Character::UpdateAbilities(float dt, std::vector<SimpleEnemy>& enemy, const
 // Renders the character mesh
 void Character::Draw()
 {
-	if (!pMesh)
-	{
-		return;
-	}
+	if (!pMesh) return;
 
 	AEMtx33 scale, rot, trans, transform;
 
@@ -170,29 +152,31 @@ void Character::Draw()
 	float bobOffset = isMoving ? fabsf(sinf(moveTimer)) * 8.0f : 0.0f;
 	float tiltAngle = isMoving ? sinf(moveTimer) * 0.1f : 0.0f;
 
-	AEMtx33Scale(&scale, tileSize * 0.4f, tileSize * 0.4f);
+	// Scaled up to 0.8f so the character isn't tiny!
+	AEMtx33Scale(&scale, tileSize * 2.0f, tileSize * 2.0f);
 	AEMtx33Rot(&rot, tiltAngle);
 	AEMtx33Trans(&trans, worldX, worldY + bobOffset);
 
 	AEMtx33Concat(&transform, &rot, &scale);
 	AEMtx33Concat(&transform, &trans, &transform);
 
-	// 1. ENABLE BLENDING for the PNG's transparent background
+	// 1. ENABLE BLENDING for the transparent background
 	AEGfxSetBlendMode(AE_GFX_BM_BLEND);
 
-	// 2. SET TEXTURE MODE
+	// 2. SET RENDER MODE TO TEXTURE
 	AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
 	AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
+	AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f); // Safety reset
 
-	// 3. BIND AND DRAW
-	AEGfxTextureSet(pTexture, 0, 0);
+	// 3. DRAW THE TEXTURE
+	AEGfxTextureSet(pTexture, 0.0f, 0.0f);
 	AEGfxSetTransform(transform.m);
 	AEGfxMeshDraw(pMesh, AE_GFX_MDM_TRIANGLES);
 
-	// 4. RESET STATE (This brings your inventory back!)
-	AEGfxTextureSet(nullptr, 0, 0);
-	AEGfxSetRenderMode(AE_GFX_RM_COLOR); // Reset back to color mode
-	AEGfxSetBlendMode(AE_GFX_BM_NONE);   // Turn off blending to be safe
+	// 4. CLEAN UP FOR THE REST OF THE GAME
+	AEGfxTextureSet(nullptr, 0.0f, 0.0f);
+	AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+	AEGfxSetBlendMode(AE_GFX_BM_NONE);
 }
 
 // Draw Abilities
