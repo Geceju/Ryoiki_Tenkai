@@ -79,6 +79,7 @@ private:
 
 	// Visual mesh
 	AEGfxVertexList* pMesh;
+	AEGfxTexture* pTexture;
 
 	// Abilities
 	PlayerAbilities abilities;

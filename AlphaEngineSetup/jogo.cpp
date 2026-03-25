@@ -6,7 +6,7 @@
 
 // Constructor initializes position and settings
 Character::Character(int startX, int startY, float tile)
-	: gridX(startX), gridY(startY), tileSize(tile), pMesh(nullptr), moveTimer(0.0f)
+	: gridX(startX), gridY(startY), tileSize(tile), pMesh(nullptr), pTexture(nullptr), moveTimer(0.0f)
 {
 	// Centers the world position within the grid tile
 	worldX = (static_cast<float>(gridX) * tileSize) + (tileSize * 0.5f);
@@ -33,6 +33,21 @@ void Character::Load()
 		return;
 	}
 
+	pTexture = AEGfxTextureLoad("Assets/Assets/jogo.png");
+
+	// --- ADD THIS DIAGNOSTIC CHECK ---
+	if (pTexture == nullptr)
+	{
+		std::cout << "\n====================================\n";
+		std::cout << "ERROR: Failed to load jogo.png!" << "\n";
+		std::cout << "The engine cannot find the file at that path." << "\n";
+		std::cout << "====================================\n\n";
+	}
+	else
+	{
+		std::cout << "\nSUCCESS: jogo.png loaded perfectly!\n\n";
+	}
+
 	AEGfxMeshStart();
 	// Create a square mesh with center origin
 	AEGfxTriAdd(-0.5f, -0.5f, 0xFF00FFFF, 0.0f, 1.0f, 0.5f, -0.5f, 0xFF00FFFF, 1.0f, 1.0f, -0.5f, 0.5f, 0xFF00FFFF, 0.0f, 0.0f);
@@ -54,6 +69,13 @@ void Character::Unload()
 		AEGfxMeshFree(pMesh);
 		pMesh = nullptr;
 	}
+
+	if (pTexture)
+	{
+		AEGfxTextureUnload(pTexture);
+		pTexture = nullptr;
+	}
+
 	// Free vision mesh if it exists
 	if (pVisionMesh) {
 		AEGfxMeshFree(pVisionMesh);
@@ -155,10 +177,22 @@ void Character::Draw()
 	AEMtx33Concat(&transform, &rot, &scale);
 	AEMtx33Concat(&transform, &trans, &transform);
 
-	AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+	// 1. ENABLE BLENDING for the PNG's transparent background
+	AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+
+	// 2. SET TEXTURE MODE
+	AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
 	AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
+
+	// 3. BIND AND DRAW
+	AEGfxTextureSet(pTexture, 0, 0);
 	AEGfxSetTransform(transform.m);
 	AEGfxMeshDraw(pMesh, AE_GFX_MDM_TRIANGLES);
+
+	// 4. RESET STATE (This brings your inventory back!)
+	AEGfxTextureSet(nullptr, 0, 0);
+	AEGfxSetRenderMode(AE_GFX_RM_COLOR); // Reset back to color mode
+	AEGfxSetBlendMode(AE_GFX_BM_NONE);   // Turn off blending to be safe
 }
 
 // Draw Abilities
