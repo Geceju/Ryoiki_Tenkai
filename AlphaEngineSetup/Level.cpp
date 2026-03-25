@@ -353,7 +353,7 @@ void Level_Init()
 			}
 		}
 
-		// --- SPAWN A KEY ---
+		// --- SPAWN 3 KEYS in random rooms (which does not include start and boss/end room) ---
 		std::vector<Room*> eligibleRooms;
 		for (const auto& room : g_DungeonRooms)
 		{
@@ -363,8 +363,13 @@ void Level_Init()
 			}
 		}
 
-		if (!eligibleRooms.empty())
+		// Spawn 3 keys (they will all stack in slot 4 when collected)
+		int keysSpawned = 0;
+		int maxKeys = 3;
+
+		while (keysSpawned < maxKeys && !eligibleRooms.empty())
 		{
+			// Pick a random room
 			int randomRoomIndex = std::rand() % eligibleRooms.size();
 			Room* keyRoom = eligibleRooms[randomRoomIndex];
 
@@ -384,18 +389,24 @@ void Level_Init()
 
 					g_ItemsManager.SpawnItem(keyX, keyY, ItemType::KEY);
 					keyPlaced = true;
-					printf("Key spawned safely in room at (%f, %f)\n", keyX, keyY);
+					keysSpawned++;
+					printf("Key %d spawned safely in room at (%f, %f)\n", keysSpawned, keyX, keyY);
 				}
 				attempts++;
 			}
 
 			if (!keyPlaced)
 			{
-				// Absolute fallback to center if the algorithm fails to find an edge tile
+				// Fallback: place at room center
 				g_ItemsManager.SpawnItem(keyRoom->rect.GetCenter().x, keyRoom->rect.GetCenter().y, ItemType::KEY);
-				printf("Key spawned at room center (Fallback)\n");
+				keysSpawned++;
+				printf("Key %d spawned at room center (Fallback)\n", keysSpawned);
 			}
+			// prevents spawning of multiple keys in same room
+			eligibleRooms.erase(eligibleRooms.begin() + randomRoomIndex);
 		}
+
+		printf("Total keys spawned: %d\n", keysSpawned);
 
 		g_ItemsInitialized = true;
 	}
@@ -502,7 +513,7 @@ void Level_Update()
 	if (AEInputCheckTriggered(AEVK_N)) { g_RevealNeighbors = !g_RevealNeighbors; printf("Reveal Neighbors: %s\n", g_RevealNeighbors ? "ON" : "OFF"); }
 	if (AEInputCheckTriggered(AEVK_M)) { g_ShowWayfinder = !g_ShowWayfinder; printf("Show Wayfinder: %s\n", g_ShowWayfinder ? "ON" : "OFF"); }
 	if (AEInputCheckTriggered(AEVK_C)) { g_ShowColors = !g_ShowColors; printf("Show Colors: %s\n", g_ShowColors ? "ON" : "OFF"); }
-		
+
 	// Show the key's location on the map when 'K' is pressed
 	if (AEInputCheckTriggered(AEVK_K))
 	{
@@ -525,12 +536,14 @@ void Level_Update()
 				py >= g_BossRoom->rect.bottom && py <= g_BossRoom->rect.top)
 			{
 				if (AEInputCheckTriggered(AEVK_E)) {
-					if (g_Inventory.HasKey()) {
-						printf("Door Unlocked!\n");
+					int keyCount = g_Inventory.GetKeyCount();
+					if (keyCount >= 3) {
+						printf("Door Unlocked! You have all 3 keys!\n");
 						s_ShowLevelComplete = true; // Pause game and show the menu
 					}
 					else {
-						printf("The door is locked. You need a Key!\n");
+						printf("The door is locked. You need %d more key%s! (Slot 4: %d/3)\n",
+							3 - keyCount, (3 - keyCount == 1) ? "" : "s", keyCount);
 					}
 				}
 			}
@@ -563,7 +576,7 @@ void Level_Update()
 		// Update Enemies and Items
 		float playerWorldX = g_Character->GetWorldX();
 		float playerWorldY = g_Character->GetWorldY();
-		
+
 
 		for (auto& enemy : g_Enemies)
 		{
@@ -679,7 +692,7 @@ void Level_Draw()
 		g_Character->Draw();
 	}
 	// -------------------------------------------
-	
+
 	// Wayfinder to boss room
 	if (g_ShowWayfinder && g_BossRoom && g_Character)
 	{

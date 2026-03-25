@@ -11,7 +11,7 @@ Inventory::Inventory()
 	, pItemMesh(nullptr)
 	, fontId(-1) {
 
-	// Initialize all slots (now 4 slots)
+	// Initialize all slots
 	for (int i = 0; i < HOTBAR_SIZE; ++i) {
 		slots[i] = InventorySlot();
 	}
@@ -182,25 +182,37 @@ void Inventory::Draw() {
 			float slotX = startX + (float)i * (SLOT_SIZE + SLOT_SPACING);
 			float slotY = startY;
 
-			// Draw slot number at the TOP of the box
-			char numText[4];
-			sprintf_s(numText, "%d", i + 1);
+			// Draw slot number or "KEY" at the TOP of the box
+			char slotText[8];
+
+			if (i == 3) {  // Slot 4 (index 3) - show "KEY"
+				sprintf_s(slotText, "KEY");
+			}
+			else {
+				sprintf_s(slotText, "%d", i + 1);  // Show 1, 2, 3
+			}
 
 			float textX = (slotX + SLOT_SIZE * 0.5f - camX) / (windowWidth * 0.5f);
 			float textY = (slotY + SLOT_SIZE * 0.8f - camY) / (windowHeight * 0.5f);
 
-			AEGfxPrint(fontId, numText, textX, textY, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+			// ALL TEXT NOW SMALLER AND SAME SIZE (0.7f)
+			if (i == 3) {
+				AEGfxPrint(fontId, slotText, textX, textY, 0.7f, 1.0f, 1.0f, 0.0f, 1.0f); // Yellow for KEY
+			}
+			else {
+				AEGfxPrint(fontId, slotText, textX, textY, 0.7f, 1.0f, 1.0f, 1.0f, 1.0f); // White for numbers (now 0.7f)
+			}
 
 			// Draw item count at the BOTTOM RIGHT of the box if more than 1
-			// Keys shouldn't stack, but keep this for other items
-			if (slots[i].isActive && slots[i].count > 1 && slots[i].itemType != ItemType::KEY) {
+			if (slots[i].isActive && slots[i].count > 1) {
 				char countText[8];
 				sprintf_s(countText, "%d", slots[i].count);
 
 				float countX = (slotX + SLOT_SIZE * 0.8f - camX) / (windowWidth * 0.5f);
 				float countY = (slotY + SLOT_SIZE * 0.2f - camY) / (windowHeight * 0.5f);
 
-				AEGfxPrint(fontId, countText, countX, countY, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+				// Count numbers also smaller (0.7f)
+				AEGfxPrint(fontId, countText, countX, countY, 0.7f, 1.0f, 1.0f, 1.0f, 1.0f);
 			}
 		}
 	}
@@ -209,16 +221,17 @@ void Inventory::Draw() {
 void Inventory::AddItem(ItemType type) {
 	// Special handling for KEY - always go to slot 4 (index 3)
 	if (type == ItemType::KEY) {
-		// Key always goes to slot 4
+		// Key always goes to slot 4 and stacks there
 		if (!slots[3].isActive) {
 			slots[3].isActive = true;
 			slots[3].itemType = type;
 			slots[3].count = 1;
-			printf("KEY added to slot 4!\n");
+			printf("KEY added to slot 4! (1/3)\n");
 		}
 		else {
-			// Shouldn't happen - only one key
-			printf("You already have the key!\n");
+			// Stack keys in slot 4
+			slots[3].count++;
+			printf("KEY added to slot 4! (%d/3)\n", slots[3].count);
 		}
 		return;
 	}
@@ -255,7 +268,7 @@ bool Inventory::UseItem(int slotIndex) {
 
 	// Don't allow using the key - it's just for exiting
 	if (slot.itemType == ItemType::KEY) {
-		printf("Press E near the exit to use the key!\n");
+		printf("You have %d/3 keys. Press E at the exit to use them.\n", slot.count);
 		return false;
 	}
 
@@ -285,4 +298,11 @@ bool Inventory::UseItem(int slotIndex) {
 
 bool Inventory::HasKey() const {
 	return slots[3].isActive && slots[3].itemType == ItemType::KEY && slots[3].count > 0;
+}
+
+int Inventory::GetKeyCount() const {
+	if (slots[3].isActive && slots[3].itemType == ItemType::KEY) {
+		return slots[3].count;
+	}
+	return 0;
 }
