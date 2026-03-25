@@ -242,6 +242,7 @@ void Level_Init()
 
 	// Calculate current level mathematically
 	g_CurrentRunLevel = (gGameStateCurr - GS_LEVEL1) + 1;
+	if (gGameStateCurr == GS_LEVEL1) lives = 3;
 
 	RoomGenerator generator;
 	g_DungeonRooms = generator.Generate(3072, 3072, 512);
@@ -592,7 +593,7 @@ void Level_Update()
 			if (AEInputCheckTriggered(AEVK_BACK)) {
 				gGameStateNext = GS_MAINMENU; // Return to menu
 			}
-			return; // Stop normal game logic while this menu is open
+			return;
 		}
 
 		if (s_EnemyContact) {
