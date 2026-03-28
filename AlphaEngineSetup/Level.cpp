@@ -28,7 +28,8 @@ static std::vector<std::unique_ptr<Room>> g_DungeonRooms;
 static AEGfxVertexList* g_pUnitSquare = nullptr;
 static AEGfxVertexList* g_pRectOutline = nullptr;
 
-// entity data
+// ENTITY DATA
+
 // player character
 static std::unique_ptr<Character> g_Character = nullptr;
 
@@ -37,12 +38,13 @@ static std::vector<SimpleEnemy> g_Enemies;
 static int g_Difficulty = 1;
 static int lives = 3;
 static float invun_timer = 0.0f;
+
 // END ENTITY DATA
 
 // Tutorial State
 static bool s_ShowTutorial = false;
 
-// level state
+// Level state
 static bool g_RevealNeighbors = true;
 static Room* g_BossRoom = nullptr;
 static bool g_ShowWayfinder = false;
@@ -50,12 +52,17 @@ static bool g_ShowColors = false;
 static bool g_ShowKeyLocation = false;
 static s8 g_FontId = -1;
 
-// Settings/Pause state
+// Settings/pause state
 static bool s_ShowSettings = false;
 
-// Level Transition state
+// Level transition state
 static bool s_ShowLevelComplete = false;
 static bool s_EnemyContact = false;
+
+// End room UI state
+static float g_EndRoomTextAlpha = 0.0f;
+static bool g_EndRoomFadeIn = true;
+static float g_FadeSpeed = 1.5f;
 
 // Leaderboard state
 static bool s_IsEnteringName = false;
@@ -552,6 +559,18 @@ void Level_Update()
 			if (px >= g_BossRoom->rect.left && px <= g_BossRoom->rect.right &&
 				py >= g_BossRoom->rect.bottom && py <= g_BossRoom->rect.top)
 			{
+				// Update fade timer for text pulse effect
+				if (g_EndRoomFadeIn)
+				{
+					g_EndRoomTextAlpha += g_FadeSpeed * dt;
+					if (g_EndRoomTextAlpha >= 1.0f) { g_EndRoomTextAlpha = 1.0f; g_EndRoomFadeIn = false; }
+				}
+				else
+				{
+					g_EndRoomTextAlpha -= g_FadeSpeed * dt;
+					if (g_EndRoomTextAlpha <= 0.2f) { g_EndRoomTextAlpha = 0.2f; g_EndRoomFadeIn = true; }
+				}
+
 				if (AEInputCheckTriggered(AEVK_E)) {
 					int keyCount = g_Inventory.GetKeyCount();
 					if (keyCount >= 3) {
@@ -563,6 +582,12 @@ void Level_Update()
 							3 - keyCount, (3 - keyCount == 1) ? "" : "s", keyCount);
 					}
 				}
+			}
+			else
+			{
+				// Reset alpha when player leaves the room
+				g_EndRoomTextAlpha = 0.0f;
+				g_EndRoomFadeIn = true;
 			}
 		}
 
@@ -689,7 +714,7 @@ void Level_Draw()
 	}
 
 	// Draw Items
-// Draw Items (Now uses the official textured Draw function in Items.cpp!)
+	// Draw Items (Now uses the official textured Draw function in Items.cpp!)
 	g_ItemsManager.Draw();
 	for (auto& enemy : g_Enemies)
 	{
@@ -753,6 +778,35 @@ void Level_Draw()
 				AEGfxMeshDraw(g_pRectOutline, AE_GFX_MDM_LINES_STRIP); // Use your hollow rect mesh
 
 				break; // We found the key, no need to keep checking items
+			}
+		}
+	}
+
+	// Draw End Room Fading Reminders
+	if (g_Character && g_BossRoom && g_EndRoomTextAlpha > 0.0f)
+	{
+		float px = g_Character->GetWorldX();
+		float py = g_Character->GetWorldY();
+
+		if (px >= g_BossRoom->rect.left && px <= g_BossRoom->rect.right &&
+			py >= g_BossRoom->rect.bottom && py <= g_BossRoom->rect.top)
+		{
+			int keyCount = g_Inventory.GetKeyCount();
+			char reminderBuf[64];
+
+			if (keyCount >= 3)
+			{
+				sprintf_s(reminderBuf, "PRESS 'E' TO ESCAPE!");
+			}
+			else
+			{
+				sprintf_s(reminderBuf, "COLLECT ALL KEYS (%d/3)", keyCount);
+			}
+
+			if (g_FontId >= 0)
+			{
+				// Position text near the center bottom
+				AEGfxPrint(g_FontId, reminderBuf, -0.22f, -0.6f, 1.2f, 1.0f, 1.0f, 1.0f, g_EndRoomTextAlpha);
 			}
 		}
 	}
@@ -956,29 +1010,33 @@ void Level_Free()
 
 void Level_Unload()
 {
-	if (g_pUnitSquare) { AEGfxMeshFree(g_pUnitSquare); g_pUnitSquare = nullptr; }
-	if (g_pRectOutline) { AEGfxMeshFree(g_pRectOutline); g_pRectOutline = nullptr; }
-
+	// Destroy the font to prevent memory leaks
 	if (g_FontId >= 0) {
 		AEGfxDestroyFont(g_FontId);
 		g_FontId = -1;
 	}
 
-	SettingsMenu_Unload();
-
-	// Release any textures or allocated data inside the player class
-
-	for (auto& enemy : g_Enemies) {
-		enemy.Unload();
-	}
-	g_Enemies.clear();
-
-	// Clear the mesh ONCE at the very end
+	// Free the primary unit square mesh
 	if (g_pUnitSquare) {
 		AEGfxMeshFree(g_pUnitSquare);
 		g_pUnitSquare = nullptr;
 	}
 
+	// Free the rectangle outline mesh
+	if (g_pRectOutline) {
+		AEGfxMeshFree(g_pRectOutline);
+		g_pRectOutline = nullptr;
+	}
+
+	// Unload the inventory system assets
 	g_Inventory.Unload();
+
+	// Unload settings menu resources
 	SettingsMenu_Unload();
+
+	// Release enemy textures and clear the list
+	for (auto& enemy : g_Enemies) {
+		enemy.Unload();
+	}
+	g_Enemies.clear();
 }
