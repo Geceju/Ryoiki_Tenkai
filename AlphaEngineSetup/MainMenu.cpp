@@ -264,22 +264,24 @@ void MainMenu_Draw() {
                 float g = (i < 3) ? 1.0f : 1.0f;
                 float b = (i < 3) ? 0.0f : 1.0f;
 
-                float rowY = 0.05f - (i * 0.08f); // Starting lower so headers fit
+                // FIX: Shrunk the vertical gap from 0.08f to 0.06f so all 10 fit!
+                float rowY = 0.05f - (i * 0.06f);
 
-                // 1. Draw Rank (Fixed at X: -0.35)
+                // FIX: Dropped the text scale from 1.0f to 0.85f so they don't overlap vertically
+                // 1. Draw Rank 
                 char rankBuf[16];
                 sprintf_s(rankBuf, "%d.", (int)i + 1);
-                AEGfxPrint(g_FontIdMenu, rankBuf, -0.35f, rowY, 1.0f, r, g, b, 1.0f);
+                AEGfxPrint(g_FontIdMenu, rankBuf, -0.35f, rowY, 0.85f, r, g, b, 1.0f);
 
-                // 2. Draw Username (Fixed at X: -0.15)
+                // 2. Draw Username 
                 char nameBuf[16];
                 sprintf_s(nameBuf, "%s", runs[i].playerName.c_str());
-                AEGfxPrint(g_FontIdMenu, nameBuf, -0.15f, rowY, 1.0f, r, g, b, 1.0f);
+                AEGfxPrint(g_FontIdMenu, nameBuf, -0.15f, rowY, 0.85f, r, g, b, 1.0f);
 
-                // 3. Draw Time & Level (Fixed at X: 0.15)
+                // 3. Draw Time & Level 
                 char timeBuf[32];
                 sprintf_s(timeBuf, "Lvl %d  |  %02d:%05.2f", runs[i].levelReached, minutes, seconds);
-                AEGfxPrint(g_FontIdMenu, timeBuf, 0.15f, rowY, 1.0f, r, g, b, 1.0f);
+                AEGfxPrint(g_FontIdMenu, timeBuf, 0.15f, rowY, 0.85f, r, g, b, 1.0f);
             }
         }
     }

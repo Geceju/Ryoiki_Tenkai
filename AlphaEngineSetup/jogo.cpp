@@ -99,19 +99,21 @@ void Character::Update(const std::vector<std::unique_ptr<Room>>& rooms)
 
 		// Try moving along X-Axis
 		float nextWorldX = worldX + (dirX * moveSpeed * dt);
-		if (IsPositionWalkable(nextWorldX, worldY, rooms))
+
+		// If Noclip is ON, or the next X position is a floor tile, move X!
+		if (isNoClip || IsPositionWalkable(nextWorldX, worldY, rooms))
 		{
 			worldX = nextWorldX;
 		}
 
 		// Try moving along Y-Axis
-		// Use the potentially updated worldX to ensure no slide into a corner wall
 		float nextWorldY = worldY + (dirY * moveSpeed * dt);
-		if (IsPositionWalkable(worldX, nextWorldY, rooms))
+
+		// If Noclip is ON, or the next Y position is a floor tile, move Y!
+		if (isNoClip || IsPositionWalkable(worldX, nextWorldY, rooms))
 		{
 			worldY = nextWorldY;
 		}
-
 		// Update grid coordinates based on final position
 		gridX = static_cast<int>(floorf(worldX / tileSize));
 		gridY = static_cast<int>(floorf(worldY / tileSize));

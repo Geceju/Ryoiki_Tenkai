@@ -61,6 +61,8 @@ public:
 	void LoadVisionMesh();             // Generates the shadow geometry
 	void DrawVisionOverlay();          // Renders the shadow over the world
 
+	bool isNoClip = false;
+
 private:
 	// Checks specific tile value at coordinates
 	// Return true only if the tile is 0 meaning Floor

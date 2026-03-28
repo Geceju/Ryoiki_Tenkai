@@ -39,6 +39,9 @@ static int lives = 3;
 static float invun_timer = 0.0f;
 // END ENTITY DATA
 
+// Tutorial State
+static bool s_ShowTutorial = false;
+
 // level state
 static bool g_RevealNeighbors = true;
 static Room* g_BossRoom = nullptr;
@@ -58,6 +61,11 @@ static bool s_EnemyContact = false;
 static bool s_IsEnteringName = false;
 static std::string s_CurrentName = "";
 static bool s_ShowNameWarning = false;
+
+// Debug State
+static bool s_ShowDebug = false;
+static bool s_GodMode = false;
+static bool s_NoClip = false;
 
 /**
  * @brief Draws a rotated and scaled line segment between two points using a unit square mesh.
@@ -242,7 +250,13 @@ void Level_Init()
 
 	// Calculate current level mathematically
 	g_CurrentRunLevel = (gGameStateCurr - GS_LEVEL1) + 1;
-	if (gGameStateCurr == GS_LEVEL1) lives = 3;
+	if (gGameStateCurr == GS_LEVEL1) {
+		lives = 3;
+		s_ShowTutorial = true; // --- SHOW TUTORIAL ON LEVEL 1 ---
+	}
+	else {
+		s_ShowTutorial = false; // Hide it on deeper levels
+	}
 
 	RoomGenerator generator;
 	g_DungeonRooms = generator.Generate(3072, 3072, 512);
@@ -429,7 +443,7 @@ void Level_Init()
 void Level_Update()
 {
 	// Toggle Settings/Pause
-	if (AEInputCheckTriggered(AEVK_ESCAPE))
+	if (AEInputCheckTriggered(AEVK_ESCAPE) && !s_IsEnteringName && !s_ShowLevelComplete && lives > 0 && !s_ShowTutorial)
 	{
 		s_ShowSettings = !s_ShowSettings;
 		printf("Settings Menu: %s\n", s_ShowSettings ? "ON" : "OFF");
@@ -490,32 +504,38 @@ void Level_Update()
 		return;
 	}
 
+	//HANDLE TUTORIAL OVERLAY ---
+	if (s_ShowTutorial) {
+		if (AEInputCheckTriggered(AEVK_RETURN)) {
+			s_ShowTutorial = false; // Dismiss tutorial
+		}
+		return; // Halt the update loop so the game stays paused!
+	}
+
 	float dt = (float)AEFrameRateControllerGetFrameTime();
 	g_RunTimer += dt;
 
 	// Normal Level Updates
 	if (AEInputCheckTriggered(AEVK_R)) { gGameStateNext = GS_RESTART; printf("Restarting Level...\n"); }
 
-	// If they quit early, save their progress up to this level
-	//if (AEInputCheckTriggered(AEVK_Q)) {
-	//	// Trigger name entry instead of instantly quitting
-	//	if (g_CurrentRunLevel > 1 || g_RunTimer > 10.0f) {
-	//		s_IsEnteringName = true;
-	//	}
-	//	else {
-	//		gGameStateNext = GS_MAINMENU;
-	//	}
-	//}
+	// --- F3 DEBUG MENU CONTROLS ---
+	if (AEInputCheckTriggered(AEVK_F3)) {
+		s_ShowDebug = !s_ShowDebug;
+	}
 
-	if (AEInputCheckTriggered(AEVK_N)) { g_RevealNeighbors = !g_RevealNeighbors; printf("Reveal Neighbors: %s\n", g_RevealNeighbors ? "ON" : "OFF"); }
-	if (AEInputCheckTriggered(AEVK_M)) { g_ShowWayfinder = !g_ShowWayfinder; printf("Show Wayfinder: %s\n", g_ShowWayfinder ? "ON" : "OFF"); }
-	if (AEInputCheckTriggered(AEVK_C)) { g_ShowColors = !g_ShowColors; printf("Show Colors: %s\n", g_ShowColors ? "ON" : "OFF"); }
+	// Only allow these toggles if the Debug Menu is OPEN!
+	if (s_ShowDebug) {
+		if (AEInputCheckTriggered(AEVK_G)) s_GodMode = !s_GodMode;
+		if (AEInputCheckTriggered(AEVK_V)) {
+			s_NoClip = !s_NoClip;
+			if (g_Character) g_Character->isNoClip = s_NoClip; // Tell the player to ignore walls!
+		}
 
-	// Show the key's location on the map when 'K' is pressed
-	if (AEInputCheckTriggered(AEVK_K))
-	{
-		g_ShowKeyLocation = !g_ShowKeyLocation;
-		printf("Key Tracker: %s\n", g_ShowKeyLocation ? "ON" : "OFF");
+		// Map & Visual Debuggers
+		if (AEInputCheckTriggered(AEVK_N)) { g_RevealNeighbors = !g_RevealNeighbors; printf("Reveal Neighbors: %s\n", g_RevealNeighbors ? "ON" : "OFF"); }
+		if (AEInputCheckTriggered(AEVK_M)) { g_ShowWayfinder = !g_ShowWayfinder; printf("Show Wayfinder: %s\n", g_ShowWayfinder ? "ON" : "OFF"); }
+		if (AEInputCheckTriggered(AEVK_C)) { g_ShowColors = !g_ShowColors; printf("Show Colors: %s\n", g_ShowColors ? "ON" : "OFF"); }
+		if (AEInputCheckTriggered(AEVK_K)) { g_ShowKeyLocation = !g_ShowKeyLocation; printf("Key Tracker: %s\n", g_ShowKeyLocation ? "ON" : "OFF"); }
 	}
 
 	// Update inventory (handles number key presses)
@@ -547,8 +567,6 @@ void Level_Update()
 		}
 
 		g_Character->Update(g_DungeonRooms);
-
-		// Make sure Character class expects a vector here now
 		g_Character->UpdateAbilities(dt, g_Enemies, g_ItemsManager, g_DungeonRooms);
 		g_Character->CheckItemCollection(g_ItemsManager);
 
@@ -557,7 +575,6 @@ void Level_Update()
 		// Room Discovery
 		for (auto& room : g_DungeonRooms)
 		{
-			// check boundary collision using the new AABB helper
 			if (Collision_PointInRect(g_Character->GetWorldX(), g_Character->GetWorldY(), room->rect))
 			{
 				room->isDiscovered = true;
@@ -569,21 +586,19 @@ void Level_Update()
 			}
 		}
 
-
 		// Update Enemies and Items
 		float playerWorldX = g_Character->GetWorldX();
 		float playerWorldY = g_Character->GetWorldY();
 
-
 		for (auto& enemy : g_Enemies)
 		{
-			// Update enemy AI/Movement
 			enemy.Update(playerWorldX, playerWorldY, dt, g_DungeonRooms);
 			float dx = playerWorldX - enemy.GetWorldX();
 			float dy = playerWorldY - enemy.GetWorldY();
 			float distToPlayer = dx * dx + dy * dy;
-			// 625 = 25^2
-			if (distToPlayer < 625 && !s_EnemyContact) {
+
+			// GODMODE CHECK IS HERE!
+			if (distToPlayer < 625 && !s_EnemyContact && !s_GodMode) {
 				s_EnemyContact = true;
 				lives--;
 				g_Character->TriggerStun(g_Enemies);
@@ -603,7 +618,7 @@ void Level_Update()
 				invun_timer = 0.0f;
 			}
 		}
-		// Safely update items with the defined variables
+
 		g_ItemsManager.Update(playerWorldX, playerWorldY, 0.0f);
 	}
 
@@ -613,10 +628,8 @@ void Level_Update()
 		printf("Items collected: %d/%d\n",
 			g_ItemsManager.GetCollectedCount(),
 			g_ItemsManager.GetTotalCount());
-
 		printf("Uncollected items at positions:\n");
 	}
-
 }
 
 void Level_Draw()
@@ -744,6 +757,43 @@ void Level_Draw()
 		}
 	}
 
+	// DRAW THE RUN TIMER
+	if (g_FontId >= 0) {
+		// DRAW THE RUN TIMER
+		if (g_FontId >= 0) {
+			int minutes = static_cast<int>(g_RunTimer) / 60;
+			float seconds = fmod(g_RunTimer, 60.0f);
+			char timeBuf[32];
+			sprintf_s(timeBuf, "Time: %02d:%05.2f", minutes, seconds);
+
+			// FIX: Bumped Y up to 0.90f!
+			AEGfxPrint(g_FontId, timeBuf, -0.95f, 0.90f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+		}
+	}
+	//DEBUG MENU
+	if (s_ShowDebug && g_FontId >= 0) {
+		char fpsBuf[32], godBuf[32], clipBuf[32];
+		char neighBuf[32], wayBuf[32], colBuf[32], keyBuf[32];
+
+		// Format all the strings
+		sprintf_s(fpsBuf, "FPS: %.0f", (float)AEFrameRateControllerGetFrameRate());
+		sprintf_s(godBuf, "Godmode (G): %s", s_GodMode ? "ON" : "OFF");
+		sprintf_s(clipBuf, "Noclip (V): %s", s_NoClip ? "ON" : "OFF");
+		sprintf_s(neighBuf, "Neighbors (N): %s", g_RevealNeighbors ? "ON" : "OFF");
+		sprintf_s(wayBuf, "Wayfinder (M): %s", g_ShowWayfinder ? "ON" : "OFF");
+		sprintf_s(colBuf, "Colors (C): %s", g_ShowColors ? "ON" : "OFF");
+		sprintf_s(keyBuf, "Key Tracker (K): %s", g_ShowKeyLocation ? "ON" : "OFF");
+
+		// Stack them neatly down the left side of the screen
+		AEGfxPrint(g_FontId, fpsBuf, -0.95f, 0.65f, 0.8f, 0.0f, 1.0f, 0.0f, 1.0f); // Green
+		AEGfxPrint(g_FontId, godBuf, -0.95f, 0.60f, 0.8f, 0.0f, 1.0f, 0.0f, 1.0f);
+		AEGfxPrint(g_FontId, clipBuf, -0.95f, 0.55f, 0.8f, 0.0f, 1.0f, 0.0f, 1.0f);
+		AEGfxPrint(g_FontId, neighBuf, -0.95f, 0.50f, 0.8f, 0.0f, 1.0f, 0.0f, 1.0f);
+		AEGfxPrint(g_FontId, wayBuf, -0.95f, 0.45f, 0.8f, 0.0f, 1.0f, 0.0f, 1.0f);
+		AEGfxPrint(g_FontId, colBuf, -0.95f, 0.40f, 0.8f, 0.0f, 1.0f, 0.0f, 1.0f);
+		AEGfxPrint(g_FontId, keyBuf, -0.95f, 0.35f, 0.8f, 0.0f, 1.0f, 0.0f, 1.0f);
+	}
+
 	// Settings Overlay
 	if (s_ShowSettings)
 	{
@@ -860,6 +910,39 @@ void Level_Draw()
 			AEGfxPrint(g_FontId, (char*)"Press [BACKSPACE] to Return to Menu", -0.275f, -0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 		}
 	}
+	// --- DRAW TUTORIAL OVERLAY ---
+	if (s_ShowTutorial) {
+		// Draw a semi-transparent dark background
+		float camX = g_Character ? g_Character->GetWorldX() : 0.0f;
+		float camY = g_Character ? g_Character->GetWorldY() : 0.0f;
+
+		AEMtx33 scale, trans, transform;
+		AEMtx33Scale(&scale, 4000.0f, 4000.0f);
+		AEMtx33Trans(&trans, camX, camY);
+		AEMtx33Concat(&transform, &trans, &scale);
+
+		AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+		AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 0.90f); // 90% opacity black
+		AEGfxSetTransform(transform.m);
+		AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
+		AEGfxSetBlendMode(AE_GFX_BM_NONE);
+
+		// Draw the Tutorial Text
+		if (g_FontId >= 0) {
+			AEGfxPrint(g_FontId, (char*)"HOW TO PLAY", -0.18f, 0.6f, 1.5f, 0.0f, 1.0f, 1.0f, 1.0f); // Cyan
+
+			AEGfxPrint(g_FontId, (char*)"WASD : Move Enoki Ninja", -0.4f, 0.3f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+			AEGfxPrint(g_FontId, (char*)"1, 2, 3 : Use Hotbar Abilities", -0.4f, 0.15f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+			AEGfxPrint(g_FontId, (char*)"K : Toggle Key Tracker", -0.4f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+			AEGfxPrint(g_FontId, (char*)"E : Unlock Exit Door (Requires 3 Keys)", -0.4f, -0.15f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+
+			AEGfxPrint(g_FontId, (char*)"Avoid the Pursuing Enemies!", -0.4f, -0.3f, 1.0f, 1.0f, 0.2f, 0.2f, 1.0f); // Red
+
+			AEGfxPrint(g_FontId, (char*)"Press [ENTER] to Start", -0.2f, -0.6f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f); // Green
+		}
+	}
+	// -----------------------------
 }
 
 void Level_Free()
