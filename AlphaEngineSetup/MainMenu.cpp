@@ -38,8 +38,8 @@ void MainMenu_Load() {
 
     g_FontIdMenu = AEGfxCreateFont("Assets/exo2-regular.ttf", 24);
     g_FontIdTitle = AEGfxCreateFont("Assets/exo2-regular.ttf", 96);
-    pBgPlayerTexture = AEGfxTextureLoad("Assets/Assets/jogo.png");
-    pBgEnemyTexture = AEGfxTextureLoad("Assets/Assets/enemy.png");
+    pBgPlayerTexture = AEGfxTextureLoad("Assets/jogo.png");
+    pBgEnemyTexture = AEGfxTextureLoad("Assets/enemy.png");
 
     SettingsMenu_Load();
 }

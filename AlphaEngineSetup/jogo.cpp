@@ -31,7 +31,7 @@ void Character::Load()
 	if (pMesh != nullptr) return;
 
 	// 1. Load the texture (Make sure the path matches your folder exactly!)
-	pTexture = AEGfxTextureLoad("Assets/Assets/jogo.png");
+	pTexture = AEGfxTextureLoad("Assets/jogo.png");
 
 	AEGfxMeshStart();
 	// 2. PURE WHITE MESH (0xFFFFFFFF) so the texture's true colors show up

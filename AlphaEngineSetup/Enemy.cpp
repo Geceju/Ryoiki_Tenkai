@@ -24,7 +24,7 @@ void SimpleEnemy::Load()
 
     // Load the texture once
     if (!s_pEnemyTexture) {
-        s_pEnemyTexture = AEGfxTextureLoad("Assets/Assets/enemy.png"); // Adjust path if needed
+        s_pEnemyTexture = AEGfxTextureLoad("Assets/enemy.png"); // Adjust path if needed
     }
 
     AEGfxMeshStart();

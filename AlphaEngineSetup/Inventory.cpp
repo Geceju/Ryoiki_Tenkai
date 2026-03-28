@@ -34,10 +34,10 @@ void Inventory::Load() {
 	CreateMeshes();
 
 	// --- ADD THIS: Load the textures for the UI ---
-	if (!texInvRedMushroom) texInvRedMushroom = AEGfxTextureLoad("Assets/Assets/redmushroom.png");
-	if (!texInvBlueMushroom) texInvBlueMushroom = AEGfxTextureLoad("Assets/Assets/bluemushroom.png");
-	if (!texInvGreenMushroom) texInvGreenMushroom = AEGfxTextureLoad("Assets/Assets/greenmushroom.png");
-	if (!texInvBabyCarrot) texInvBabyCarrot = AEGfxTextureLoad("Assets/Assets/babycarrot.png");
+	if (!texInvRedMushroom) texInvRedMushroom = AEGfxTextureLoad("Assets/redmushroom.png");
+	if (!texInvBlueMushroom) texInvBlueMushroom = AEGfxTextureLoad("Assets/bluemushroom.png");
+	if (!texInvGreenMushroom) texInvGreenMushroom = AEGfxTextureLoad("Assets/greenmushroom.png");
+	if (!texInvBabyCarrot) texInvBabyCarrot = AEGfxTextureLoad("Assets/babycarrot.png");
 }
 
 

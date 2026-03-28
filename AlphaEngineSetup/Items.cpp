@@ -142,10 +142,10 @@ void ItemsManager::CreateItemMesh() {
 	pItemMesh = AEGfxMeshEnd();
 
 	// Load Textures (Adjust path if needed!)
-	if (!texRedMushroom) texRedMushroom = AEGfxTextureLoad("Assets/Assets/redmushroom.png");
-	if (!texBlueMushroom) texBlueMushroom = AEGfxTextureLoad("Assets/Assets/bluemushroom.png");
-	if (!texGreenMushroom) texGreenMushroom = AEGfxTextureLoad("Assets/Assets/greenmushroom.png");
-	if (!texBabyCarrot) texBabyCarrot = AEGfxTextureLoad("Assets/Assets/babycarrot.png");
+	if (!texRedMushroom) texRedMushroom = AEGfxTextureLoad("Assets/redmushroom.png");
+	if (!texBlueMushroom) texBlueMushroom = AEGfxTextureLoad("Assets/bluemushroom.png");
+	if (!texGreenMushroom) texGreenMushroom = AEGfxTextureLoad("Assets/greenmushroom.png");
+	if (!texBabyCarrot) texBabyCarrot = AEGfxTextureLoad("Assets/babycarrot.png");
 }
 
 // Initialize the items system
