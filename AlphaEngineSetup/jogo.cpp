@@ -6,7 +6,7 @@
 
 // Constructor initializes position and settings
 Character::Character(int startX, int startY, float tile)
-	: gridX(startX), gridY(startY), tileSize(tile), pMesh(nullptr), moveTimer(0.0f)
+	: gridX(startX), gridY(startY), tileSize(tile), pMesh(nullptr), pTexture(nullptr), moveTimer(0.0f)
 {
 	// Centers the world position within the grid tile
 	worldX = (static_cast<float>(gridX) * tileSize) + (tileSize * 0.5f);
@@ -28,18 +28,18 @@ Character::~Character()
 // Creates the player graphic
 void Character::Load()
 {
-	if (pMesh != nullptr)
-	{
-		return;
-	}
+	if (pMesh != nullptr) return;
+
+	// 1. Load the texture (Make sure the path matches your folder exactly!)
+	pTexture = AEGfxTextureLoad("Assets/Assets/jogo.png");
 
 	AEGfxMeshStart();
-	// Create a square mesh with center origin
-	AEGfxTriAdd(-0.5f, -0.5f, 0xFF00FFFF, 0.0f, 1.0f, 0.5f, -0.5f, 0xFF00FFFF, 1.0f, 1.0f, -0.5f, 0.5f, 0xFF00FFFF, 0.0f, 0.0f);
-	AEGfxTriAdd(0.5f, -0.5f, 0xFF00FFFF, 1.0f, 1.0f, 0.5f, 0.5f, 0xFF00FFFF, 1.0f, 0.0f, -0.5f, 0.5f, 0xFF00FFFF, 0.0f, 0.0f);
+	// 2. PURE WHITE MESH (0xFFFFFFFF) so the texture's true colors show up
+	AEGfxTriAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f, 0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+	AEGfxTriAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, 0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
 	pMesh = AEGfxMeshEnd();
 
-	// load abilities
+	// Load abilities and vision mesh
 	abilities.Load();
 	LoadVisionMesh();
 }
@@ -54,6 +54,13 @@ void Character::Unload()
 		AEGfxMeshFree(pMesh);
 		pMesh = nullptr;
 	}
+
+	if (pTexture)
+	{
+		AEGfxTextureUnload(pTexture);
+		pTexture = nullptr;
+	}
+
 	// Free vision mesh if it exists
 	if (pVisionMesh) {
 		AEGfxMeshFree(pVisionMesh);
@@ -137,10 +144,7 @@ void Character::UpdateAbilities(float dt, std::vector<SimpleEnemy>& enemy, const
 // Renders the character mesh
 void Character::Draw()
 {
-	if (!pMesh)
-	{
-		return;
-	}
+	if (!pMesh) return;
 
 	AEMtx33 scale, rot, trans, transform;
 
@@ -148,17 +152,31 @@ void Character::Draw()
 	float bobOffset = isMoving ? fabsf(sinf(moveTimer)) * 8.0f : 0.0f;
 	float tiltAngle = isMoving ? sinf(moveTimer) * 0.1f : 0.0f;
 
-	AEMtx33Scale(&scale, tileSize * 0.4f, tileSize * 0.4f);
+	// Scaled up to 0.8f so the character isn't tiny!
+	AEMtx33Scale(&scale, tileSize * 2.0f, tileSize * 2.0f);
 	AEMtx33Rot(&rot, tiltAngle);
 	AEMtx33Trans(&trans, worldX, worldY + bobOffset);
 
 	AEMtx33Concat(&transform, &rot, &scale);
 	AEMtx33Concat(&transform, &trans, &transform);
 
-	AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+	// 1. ENABLE BLENDING for the transparent background
+	AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+
+	// 2. SET RENDER MODE TO TEXTURE
+	AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
 	AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
+	AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f); // Safety reset
+
+	// 3. DRAW THE TEXTURE
+	AEGfxTextureSet(pTexture, 0.0f, 0.0f);
 	AEGfxSetTransform(transform.m);
 	AEGfxMeshDraw(pMesh, AE_GFX_MDM_TRIANGLES);
+
+	// 4. CLEAN UP FOR THE REST OF THE GAME
+	AEGfxTextureSet(nullptr, 0.0f, 0.0f);
+	AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+	AEGfxSetBlendMode(AE_GFX_BM_NONE);
 }
 
 // Draw Abilities

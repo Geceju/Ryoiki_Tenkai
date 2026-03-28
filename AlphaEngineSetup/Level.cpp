@@ -497,15 +497,15 @@ void Level_Update()
 	if (AEInputCheckTriggered(AEVK_R)) { gGameStateNext = GS_RESTART; printf("Restarting Level...\n"); }
 
 	// If they quit early, save their progress up to this level
-	if (AEInputCheckTriggered(AEVK_Q)) {
-		// Trigger name entry instead of instantly quitting
-		if (g_CurrentRunLevel > 1 || g_RunTimer > 10.0f) {
-			s_IsEnteringName = true;
-		}
-		else {
-			gGameStateNext = GS_MAINMENU;
-		}
-	}
+	//if (AEInputCheckTriggered(AEVK_Q)) {
+	//	// Trigger name entry instead of instantly quitting
+	//	if (g_CurrentRunLevel > 1 || g_RunTimer > 10.0f) {
+	//		s_IsEnteringName = true;
+	//	}
+	//	else {
+	//		gGameStateNext = GS_MAINMENU;
+	//	}
+	//}
 
 	if (AEInputCheckTriggered(AEVK_N)) { g_RevealNeighbors = !g_RevealNeighbors; printf("Reveal Neighbors: %s\n", g_RevealNeighbors ? "ON" : "OFF"); }
 	if (AEInputCheckTriggered(AEVK_M)) { g_ShowWayfinder = !g_ShowWayfinder; printf("Show Wayfinder: %s\n", g_ShowWayfinder ? "ON" : "OFF"); }
@@ -676,22 +676,8 @@ void Level_Draw()
 	}
 
 	// Draw Items
-	AEGfxVertexList* itemMesh = g_ItemsManager.GetItemMesh();
-	if (itemMesh)
-	{
-		const auto& allItems = g_ItemsManager.GetItems();
-		for (const auto& item : allItems)
-		{
-			if (item.collected || !item.active) continue;
-			AEMtx33 scale, trans, transform;
-			AEMtx33Scale(&scale, item.visualRadius * 100.0f, item.visualRadius * 100.0f);
-			AEMtx33Trans(&trans, item.x, item.y);
-			AEMtx33Concat(&transform, &trans, &scale);
-			AEGfxSetColorToMultiply(item.color[0], item.color[1], item.color[2], item.color[3]);
-			AEGfxSetTransform(transform.m);
-			AEGfxMeshDraw(itemMesh, AE_GFX_MDM_TRIANGLES);
-		}
-	}
+// Draw Items (Now uses the official textured Draw function in Items.cpp!)
+	g_ItemsManager.Draw();
 	for (auto& enemy : g_Enemies)
 	{
 		enemy.Draw();

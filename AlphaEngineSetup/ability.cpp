@@ -2,11 +2,20 @@
 #include "jogo.h"
 #include "Enemy.h"
 #include "Items.h"
+#include "Inventory.h" 
 #include <cmath>
 #include <queue>
 #include <map>
 #include <algorithm>
 
+/*
+handles 3 abilties:
+1. speed boost -> increases player speed
+2. stun enemies -> stun all enemies
+3. guide line to nearest item
+*/
+
+// Constructors
 PlayerAbilities::PlayerAbilities()
     : speedBoostTimer(0.0f),
     guideTimer(0.0f),
@@ -20,11 +29,13 @@ PlayerAbilities::PlayerAbilities()
 {
 }
 
+// Destructor
 PlayerAbilities::~PlayerAbilities()
 {
     Unload();
 }
 
+// mesh for guide line
 void PlayerAbilities::Load()
 {
     if (!pGuideMesh)
@@ -33,6 +44,7 @@ void PlayerAbilities::Load()
     }
 }
 
+// mesh free logic
 void PlayerAbilities::Unload()
 {
     guidePathPoints.clear();
@@ -44,6 +56,7 @@ void PlayerAbilities::Unload()
     }
 }
 
+// resuable triangle mesh for guide lines
 void PlayerAbilities::CreateGuideMesh()
 {
     AEGfxMeshStart();
@@ -61,6 +74,7 @@ void PlayerAbilities::CreateGuideMesh()
     pGuideMesh = AEGfxMeshEnd();
 }
 
+// Ability 1 (speed boost)
 void PlayerAbilities::ActivateSpeedBoost(Character& player)
 {
     if (!speedBoostApplied)
@@ -73,6 +87,7 @@ void PlayerAbilities::ActivateSpeedBoost(Character& player)
     speedBoostTimer = 30.0f;
 }
 
+// Ability 2 (stun enemy)
 void PlayerAbilities::ActivateStun(std::vector<SimpleEnemy>& enemy)
 {
     for (auto& e : enemy)
@@ -81,13 +96,13 @@ void PlayerAbilities::ActivateStun(std::vector<SimpleEnemy>& enemy)
     }
 }
 
+// Ability 3 helper (kept for legacy/fallback)
 bool PlayerAbilities::FindNearestItem(const Character& player,
     const ItemsManager& items,
     float& outX,
     float& outY) const
 {
     const std::vector<Item>& allItems = items.GetItems();
-
     bool found = false;
     float bestDistSq = 0.0f;
 
@@ -112,32 +127,20 @@ bool PlayerAbilities::FindNearestItem(const Character& player,
     return found;
 }
 
+// --- FIXED: world coordinates -> global tile grid ---
 bool PlayerAbilities::WorldToTile(float worldX, float worldY,
     const std::vector<std::unique_ptr<Room>>& rooms,
     int& outTileX, int& outTileY) const
 {
-    for (const auto& room : rooms)
-    {
-        if (worldX >= room->rect.left && worldX <= room->rect.right &&
-            worldY >= room->rect.bottom && worldY <= room->rect.top)
-        {
-            float tileSize = room->tileSize;
+    if (rooms.empty()) return false;
 
-            int localTileX = static_cast<int>((worldX - room->rect.left) / tileSize);
-            int localTileY = static_cast<int>((room->rect.top - worldY) / tileSize);
-
-            int worldBaseTileX = static_cast<int>(room->rect.left / tileSize);
-            int worldBaseTileY = static_cast<int>(room->rect.bottom / tileSize);
-
-            outTileX = worldBaseTileX + localTileX;
-            outTileY = worldBaseTileY + localTileY;
-            return true;
-        }
-    }
-
-    return false;
+    float tileSize = rooms[0]->tileSize;
+    outTileX = static_cast<int>(worldX / tileSize);
+    outTileY = static_cast<int>(worldY / tileSize);
+    return true;
 }
 
+// --- FIXED: tile grid -> global world coordinates ---
 AEVec2 PlayerAbilities::TileToWorld(int tileX, int tileY, float tileSize) const
 {
     AEVec2 result;
@@ -172,37 +175,38 @@ void PlayerAbilities::RebuildGuidePath(const Character& player,
     const std::vector<std::unique_ptr<Room>>& rooms)
 {
     guidePathPoints.clear();
+    if (rooms.empty()) return;
 
-    float targetX = 0.0f;
-    float targetY = 0.0f;
-
-    if (!FindNearestItem(player, items, targetX, targetY))
-        return;
-
-    int startTileX = 0, startTileY = 0;
-    int goalTileX = 0, goalTileY = 0;
-
-    if (!WorldToTile(player.GetWorldX(), player.GetWorldY(), rooms, startTileX, startTileY))
-        return;
-
-    if (!WorldToTile(targetX, targetY, rooms, goalTileX, goalTileY))
-        return;
-
-    float tileSize = rooms.empty() ? 32.0f : rooms[0]->tileSize;
+    float tileSize = rooms[0]->tileSize;
+    int startTileX = static_cast<int>(player.GetWorldX() / tileSize);
+    int startTileY = static_cast<int>(player.GetWorldY() / tileSize);
 
     struct TileNode
     {
         int x, y;
-        bool operator<(const TileNode& other) const
-        {
+        bool operator<(const TileNode& other) const {
             if (x != other.x) return x < other.x;
             return y < other.y;
         }
+        bool operator==(const TileNode& other) const {
+            return x == other.x && y == other.y;
+        }
     };
 
-    TileNode start{ startTileX, startTileY };
-    TileNode goal{ goalTileX, goalTileY };
+    // Pre-map active items by tile to quickly check if a tile has an item
+    std::map<TileNode, AEVec2> tileToItemPos;
+    bool hasItems = false;
+    for (const Item& item : items.GetItems()) {
+        if (!item.collected && item.active) {
+            TileNode tn{ static_cast<int>(item.x / tileSize), static_cast<int>(item.y / tileSize) };
+            tileToItemPos[tn] = { item.x, item.y };
+            hasItems = true;
+        }
+    }
 
+    if (!hasItems) return;
+
+    TileNode start{ startTileX, startTileY };
     std::queue<TileNode> frontier;
     std::map<TileNode, TileNode> cameFrom;
     std::map<TileNode, bool> visited;
@@ -214,15 +218,18 @@ void PlayerAbilities::RebuildGuidePath(const Character& player,
     const int dirY[4] = { 0, 0, 1, -1 };
 
     bool found = false;
+    TileNode goalNode = start;
 
+    // --- FIXED: BFS outward from player to find the TRUE shortest walking path ---
     while (!frontier.empty())
     {
         TileNode current = frontier.front();
         frontier.pop();
 
-        if (current.x == goal.x && current.y == goal.y)
-        {
+        // If this tile contains an item, we found the absolute closest one!
+        if (tileToItemPos.find(current) != tileToItemPos.end()) {
             found = true;
+            goalNode = current;
             break;
         }
 
@@ -230,11 +237,8 @@ void PlayerAbilities::RebuildGuidePath(const Character& player,
         {
             TileNode next{ current.x + dirX[i], current.y + dirY[i] };
 
-            if (visited[next])
-                continue;
-
-            if (!IsTileWalkable(next.x, next.y, rooms, tileSize))
-                continue;
+            if (visited[next]) continue;
+            if (!IsTileWalkable(next.x, next.y, rooms, tileSize)) continue;
 
             visited[next] = true;
             cameFrom[next] = current;
@@ -242,26 +246,59 @@ void PlayerAbilities::RebuildGuidePath(const Character& player,
         }
     }
 
-    if (!found)
-        return;
+    if (!found) return;
 
     std::vector<AEVec2> reversedPoints;
-    TileNode step = goal;
+    TileNode step = goalNode;
 
-    reversedPoints.push_back(TileToWorld(step.x, step.y, tileSize));
-
-    while (!(step.x == start.x && step.y == start.y))
+    // Trace path back
+    while (!(step == start))
     {
-        step = cameFrom[step];
         reversedPoints.push_back(TileToWorld(step.x, step.y, tileSize));
+        step = cameFrom[step];
     }
 
     std::reverse(reversedPoints.begin(), reversedPoints.end());
 
-    guidePathPoints.push_back({ player.GetWorldX(), player.GetWorldY() });
-    for (const AEVec2& p : reversedPoints)
-    {
-        guidePathPoints.push_back(p);
+    // Build the raw path connecting player precisely to the item
+    std::vector<AEVec2> rawPath;
+    rawPath.push_back({ player.GetWorldX(), player.GetWorldY() });
+
+    if (!reversedPoints.empty()) {
+        for (size_t i = 0; i < reversedPoints.size(); ++i) {
+            if (i == reversedPoints.size() - 1) {
+                rawPath.push_back(tileToItemPos[goalNode]); // Connect exactly to item
+            }
+            else {
+                rawPath.push_back(reversedPoints[i]);
+            }
+        }
+    }
+    else {
+        rawPath.push_back(tileToItemPos[goalNode]);
+    }
+
+    // --- NEW: Path Simplifier (Creates straight lines by removing jagged steps) ---
+    if (rawPath.size() > 2) {
+        guidePathPoints.push_back(rawPath[0]);
+
+        for (size_t i = 1; i < rawPath.size() - 1; ++i) {
+            AEVec2 prev = guidePathPoints.back();
+            AEVec2 curr = rawPath[i];
+            AEVec2 next = rawPath[i + 1];
+
+            // Use cross product to check if the points form a straight line
+            float cross = (curr.x - prev.x) * (next.y - prev.y) - (curr.y - prev.y) * (next.x - prev.x);
+
+            // If cross product is not near zero, it's a turn/corner, so we must keep the point
+            if (std::abs(cross) > 1.0f) {
+                guidePathPoints.push_back(curr);
+            }
+        }
+        guidePathPoints.push_back(rawPath.back());
+    }
+    else {
+        guidePathPoints = rawPath;
     }
 }
 
@@ -286,17 +323,29 @@ void PlayerAbilities::Update(float dt,
 
     if (key1 && !prevKey1)
     {
-        ActivateSpeedBoost(player);
+        // Require POWER_UP item to use Speed Boost
+        if (g_Inventory.ConsumeItem(ItemType::POWER_UP))
+        {
+            ActivateSpeedBoost(player);
+        }
     }
 
     if (key2 && !prevKey2)
     {
-        ActivateStun(enemy);
+        // Require SLOW_ENEMY item to use Stun
+        if (g_Inventory.ConsumeItem(ItemType::SLOW_ENEMY))
+        {
+            ActivateStun(enemy);
+        }
     }
 
     if (key3 && !prevKey3)
     {
-        ActivateGuide(player, items, rooms);
+        // Require POINT item to use Guide Path
+        if (g_Inventory.ConsumeItem(ItemType::POINT))
+        {
+            ActivateGuide(player, items, rooms);
+        }
     }
 
     prevKey1 = key1;

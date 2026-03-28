@@ -1,6 +1,11 @@
 #include "Inventory.h"
 #include <cstdio>
 
+static AEGfxTexture* texInvRedMushroom = nullptr;
+static AEGfxTexture* texInvBlueMushroom = nullptr;
+static AEGfxTexture* texInvGreenMushroom = nullptr;
+static AEGfxTexture* texInvBabyCarrot = nullptr;
+
 // Define the global inventory instance
 Inventory g_Inventory;
 
@@ -11,10 +16,8 @@ Inventory::Inventory()
 	, pItemMesh(nullptr)
 	, fontId(-1) {
 
-	// Initialize all slots
-	for (int i = 0; i < HOTBAR_SIZE; ++i) {
-		slots[i] = InventorySlot();
-	}
+	// Call Init to set up the fixed slots
+	Init();
 }
 
 Inventory::~Inventory() {
@@ -29,32 +32,53 @@ void Inventory::Load() {
 	}
 
 	CreateMeshes();
+
+	// --- ADD THIS: Load the textures for the UI ---
+	if (!texInvRedMushroom) texInvRedMushroom = AEGfxTextureLoad("Assets/Assets/redmushroom.png");
+	if (!texInvBlueMushroom) texInvBlueMushroom = AEGfxTextureLoad("Assets/Assets/bluemushroom.png");
+	if (!texInvGreenMushroom) texInvGreenMushroom = AEGfxTextureLoad("Assets/Assets/greenmushroom.png");
+	if (!texInvBabyCarrot) texInvBabyCarrot = AEGfxTextureLoad("Assets/Assets/babycarrot.png");
 }
+
+
 
 void Inventory::Init() {
 	selectedSlot = 0;
-	for (int i = 0; i < HOTBAR_SIZE; ++i) {
-		slots[i] = InventorySlot();
-	}
+
+	// FIXING SLOTS: Hardcode each slot to a specific item type for abilities
+
+	// Slot 1 (Index 0): Key 1 (Speed Boost) -> POWER_UP (Blue)
+	slots[0].itemType = ItemType::POWER_UP;
+	slots[0].count = 0;
+	slots[0].isActive = false;
+
+	// Slot 2 (Index 1): Key 2 (Stun) -> SLOW_ENEMY (Purple)
+	slots[1].itemType = ItemType::SLOW_ENEMY;
+	slots[1].count = 0;
+	slots[1].isActive = false;
+
+	// Slot 3 (Index 2): Key 3 (Guide) -> POINT (Red)
+	slots[2].itemType = ItemType::POINT;
+	slots[2].count = 0;
+	slots[2].isActive = false;
+
+	// Slot 4 (Index 3): Key 4 (Exit) -> KEY (Yellow)
+	slots[3].itemType = ItemType::KEY;
+	slots[3].count = 0;
+	slots[3].isActive = false;
 }
 
 void Inventory::Unload() {
-	if (pSlotMesh) {
-		AEGfxMeshFree(pSlotMesh);
-		pSlotMesh = nullptr;
-	}
-	if (pSelectedMesh) {
-		AEGfxMeshFree(pSelectedMesh);
-		pSelectedMesh = nullptr;
-	}
-	if (pItemMesh) {
-		AEGfxMeshFree(pItemMesh);
-		pItemMesh = nullptr;
-	}
-	if (fontId >= 0) {
-		AEGfxDestroyFont(fontId);
-		fontId = -1;
-	}
+	if (pSlotMesh) { AEGfxMeshFree(pSlotMesh); pSlotMesh = nullptr; }
+	if (pSelectedMesh) { AEGfxMeshFree(pSelectedMesh); pSelectedMesh = nullptr; }
+	if (pItemMesh) { AEGfxMeshFree(pItemMesh); pItemMesh = nullptr; }
+	if (fontId >= 0) { AEGfxDestroyFont(fontId); fontId = -1; }
+
+	// --- ADD THIS: Free the UI textures ---
+	if (texInvRedMushroom) { AEGfxTextureUnload(texInvRedMushroom); texInvRedMushroom = nullptr; }
+	if (texInvBlueMushroom) { AEGfxTextureUnload(texInvBlueMushroom); texInvBlueMushroom = nullptr; }
+	if (texInvGreenMushroom) { AEGfxTextureUnload(texInvGreenMushroom); texInvGreenMushroom = nullptr; }
+	if (texInvBabyCarrot) { AEGfxTextureUnload(texInvBabyCarrot); texInvBabyCarrot = nullptr; }
 }
 
 void Inventory::CreateMeshes() {
@@ -89,17 +113,8 @@ void Inventory::CreateMeshes() {
 }
 
 void Inventory::Update() {
-	// Check for number key presses (1, 2, 3, 4)
-	if (AEInputCheckTriggered(AEVK_1)) {
-		UseItem(0);
-	}
-	else if (AEInputCheckTriggered(AEVK_2)) {
-		UseItem(1);
-	}
-	else if (AEInputCheckTriggered(AEVK_3)) {
-		UseItem(2);
-	}
-	else if (AEInputCheckTriggered(AEVK_4)) {
+	// Keep the key check for exiting the level, as that isn't an ability
+	if (AEInputCheckTriggered(AEVK_4)) {
 		UseItem(3);  // Slot 4 for key
 	}
 }
@@ -150,30 +165,54 @@ void Inventory::Draw() {
 			AEGfxMeshDraw(pSelectedMesh, AE_GFX_MDM_LINES_STRIP);
 		}
 
-		// Draw item if slot has one
-		if (slots[i].isActive && slots[i].count > 0) {
-			// Draw item icon (slightly smaller than slot)
-			AEMtx33Scale(&scale, SLOT_SIZE * 0.6f, SLOT_SIZE * 0.6f);
-			AEMtx33Trans(&trans, worldX, worldY);
-			AEMtx33Concat(&transform, &trans, &scale);
+		// --- DRAW ITEM (Solid if we have it, Faded if we don't) ---
 
-			switch (slots[i].itemType) {
-			case ItemType::POINT:
-				AEGfxSetColorToMultiply(1.0f, 0.0f, 0.0f, 1.0f); // Red
-				break;
-			case ItemType::POWER_UP:
-				AEGfxSetColorToMultiply(0.0f, 0.0f, 1.0f, 1.0f); // Blue
-				break;
-			case ItemType::SLOW_ENEMY:
-				AEGfxSetColorToMultiply(1.0f, 0.0f, 1.0f, 1.0f); // Purple
-				break;
-			case ItemType::KEY:
-				AEGfxSetColorToMultiply(1.0f, 1.0f, 0.0f, 1.0f); // Yellow
-				break;
-			}
-			AEGfxSetTransform(transform.m);
-			AEGfxMeshDraw(pItemMesh, AE_GFX_MDM_TRIANGLES);
+		// Setup size and position for the item (Scaled up slightly to fit the box beautifully)
+		AEMtx33Scale(&scale, SLOT_SIZE * 0.9f, SLOT_SIZE * 0.9f);
+		AEMtx33Trans(&trans, worldX, worldY);
+		AEMtx33Concat(&transform, &trans, &scale);
+
+		// Check if the player currently has the item in this slot
+		bool hasItem = (slots[i].isActive && slots[i].count > 0);
+
+		// Full opacity if owned, 30% opacity and darkened if empty
+		float alpha = hasItem ? 1.0f : 0.3f;
+		float colorTint = hasItem ? 1.0f : 0.5f; // Multiplies RGB by 0.5 to make it look grayed-out
+
+		// Select the correct texture
+		AEGfxTexture* texToDraw = nullptr;
+		switch (slots[i].itemType) {
+		case ItemType::POWER_UP:   texToDraw = texInvBlueMushroom; break;
+		case ItemType::SLOW_ENEMY: texToDraw = texInvGreenMushroom; break;
+		case ItemType::POINT:      texToDraw = texInvRedMushroom; break;
+		case ItemType::KEY:        texToDraw = texInvBabyCarrot; break;
 		}
+
+		// Draw it! 
+		AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+
+		if (texToDraw) {
+			AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
+			AEGfxSetTransparency(1.0f);
+			// Apply the tint and alpha fade so empty slots look disabled
+			AEGfxSetColorToMultiply(colorTint, colorTint, colorTint, alpha);
+			AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
+			AEGfxTextureSet(texToDraw, 0, 0);
+		}
+		else {
+			// Safety fallback if the texture pointer is null
+			AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+			AEGfxSetColorToMultiply(1.0f, 0.0f, 1.0f, alpha);
+		}
+
+		AEGfxSetTransform(transform.m);
+		AEGfxMeshDraw(pItemMesh, AE_GFX_MDM_TRIANGLES);
+
+		// Reset Engine State
+		AEGfxTextureSet(nullptr, 0, 0);
+		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+		AEGfxSetBlendMode(AE_GFX_BM_NONE);
+		// -------------------------------------------------------------
 	}
 
 	// Draw numbers and counts on top of slots
@@ -219,44 +258,36 @@ void Inventory::Draw() {
 }
 
 void Inventory::AddItem(ItemType type) {
-	// Special handling for KEY - always go to slot 4 (index 3)
-	if (type == ItemType::KEY) {
-		// Key always goes to slot 4 and stacks there
-		if (!slots[3].isActive) {
-			slots[3].isActive = true;
-			slots[3].itemType = type;
-			slots[3].count = 1;
-			printf("KEY added to slot 4! (1/3)\n");
+	int targetSlot = -1;
+
+	// Map each item strictly to its dedicated fixed slot
+	switch (type) {
+	case ItemType::POWER_UP:
+		targetSlot = 0; // Slot 1
+		break;
+	case ItemType::SLOW_ENEMY:
+		targetSlot = 1; // Slot 2
+		break;
+	case ItemType::POINT:
+		targetSlot = 2; // Slot 3
+		break;
+	case ItemType::KEY:
+		targetSlot = 3; // Slot 4
+		break;
+	}
+
+	// If a valid slot was found, add it
+	if (targetSlot != -1) {
+		slots[targetSlot].isActive = true;
+		slots[targetSlot].count++;
+
+		if (type == ItemType::KEY) {
+			printf("KEY added to slot 4! (%d/3)\n", slots[targetSlot].count);
 		}
 		else {
-			// Stack keys in slot 4
-			slots[3].count++;
-			printf("KEY added to slot 4! (%d/3)\n", slots[3].count);
-		}
-		return;
-	}
-
-	// For other items, try to stack with existing item of same type
-	for (int i = 0; i < HOTBAR_SIZE - 1; ++i) { // Exclude slot 4 (key slot)
-		if (slots[i].isActive && slots[i].itemType == type) {
-			slots[i].count++;
-			printf("Added to slot %d, now have %d\n", i + 1, slots[i].count);
-			return;
+			printf("Item added to fixed slot %d! Count: %d\n", targetSlot + 1, slots[targetSlot].count);
 		}
 	}
-
-	// Find empty slot (excluding slot 4 which is reserved for key)
-	for (int i = 0; i < HOTBAR_SIZE - 1; ++i) {
-		if (!slots[i].isActive) {
-			slots[i].isActive = true;
-			slots[i].itemType = type;
-			slots[i].count = 1;
-			printf("New item in slot %d\n", i + 1);
-			return;
-		}
-	}
-
-	printf("Inventory full!\n");
 }
 
 bool Inventory::UseItem(int slotIndex) {
@@ -305,4 +336,35 @@ int Inventory::GetKeyCount() const {
 		return slots[3].count;
 	}
 	return 0;
+}
+
+// --- NEW METHODS ---
+
+// Check if an item exists in the inventory without using it
+bool Inventory::HasItem(ItemType type) const {
+	for (int i = 0; i < HOTBAR_SIZE; ++i) {
+		if (slots[i].isActive && slots[i].itemType == type && slots[i].count > 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// Consume an item from the inventory (returns true if successful)
+bool Inventory::ConsumeItem(ItemType type) {
+	for (int i = 0; i < HOTBAR_SIZE; ++i) {
+		if (slots[i].isActive && slots[i].itemType == type && slots[i].count > 0) {
+			slots[i].count--;
+			selectedSlot = i; // Optionally highlight the slot being used
+
+			printf("Used item of type %d! - %d remaining\n", (int)type, slots[i].count);
+
+			if (slots[i].count <= 0) {
+				slots[i].isActive = false;
+				printf("Slot %d is now empty\n", i + 1);
+			}
+			return true; // Successfully consumed
+		}
+	}
+	return false; // Item not found or count is 0
 }

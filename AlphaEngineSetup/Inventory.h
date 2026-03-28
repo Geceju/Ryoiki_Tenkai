@@ -46,6 +46,10 @@ public:
 	bool HasKey() const;
 	int GetKeyCount() const;  // Add this
 
+	// --- NEW METHODS ---
+	bool HasItem(ItemType type) const;    // Checks if the item exists
+	bool ConsumeItem(ItemType type);      // Uses the item and reduces count
+
 private:
 	void CreateMeshes();
 };

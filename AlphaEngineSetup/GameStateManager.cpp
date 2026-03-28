@@ -26,6 +26,10 @@ void GSM_Initialize(GAME_STATE startState)
 
 void GSM_Update()
 {
+	if (!AESysDoesWindowExist()) {
+		gGameStateNext = GS_QUIT;
+	}
+
 	// If the state has changed
 	if (gGameStateCurr != gGameStateNext || gGameStateNext == GS_RESTART)
 	{
@@ -50,6 +54,8 @@ void GSM_Update()
 		GameStateDraw = nullptr;
 		GameStateFree = nullptr;
 		GameStateUnload = nullptr;
+
+
 
 		// Load New State
 		switch (gGameStateCurr)

@@ -14,12 +14,17 @@ class ItemsManager;
 class PlayerAbilities
 {
 public:
+    // constructor destructor
     PlayerAbilities();
     ~PlayerAbilities();
 
     void Load();
     void Unload();
 
+    /*
+    core logic:
+    check keyboard input, activate avilities, update timer & guide path(ability 3)
+    */
     void Update(float dt,
         Character& player,
         std::vector<SimpleEnemy>& enemy,
