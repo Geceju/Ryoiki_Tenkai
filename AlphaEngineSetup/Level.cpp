@@ -500,15 +500,15 @@ void Level_Update()
 	if (AEInputCheckTriggered(AEVK_R)) { gGameStateNext = GS_RESTART; printf("Restarting Level...\n"); }
 
 	// If they quit early, save their progress up to this level
-	if (AEInputCheckTriggered(AEVK_Q)) {
-		// Trigger name entry instead of instantly quitting
-		if (g_CurrentRunLevel > 1 || g_RunTimer > 10.0f) {
-			s_IsEnteringName = true;
-		}
-		else {
-			gGameStateNext = GS_MAINMENU;
-		}
-	}
+	//if (AEInputCheckTriggered(AEVK_Q)) {
+	//	// Trigger name entry instead of instantly quitting
+	//	if (g_CurrentRunLevel > 1 || g_RunTimer > 10.0f) {
+	//		s_IsEnteringName = true;
+	//	}
+	//	else {
+	//		gGameStateNext = GS_MAINMENU;
+	//	}
+	//}
 
 	if (AEInputCheckTriggered(AEVK_N)) { g_RevealNeighbors = !g_RevealNeighbors; printf("Reveal Neighbors: %s\n", g_RevealNeighbors ? "ON" : "OFF"); }
 	if (AEInputCheckTriggered(AEVK_M)) { g_ShowWayfinder = !g_ShowWayfinder; printf("Show Wayfinder: %s\n", g_ShowWayfinder ? "ON" : "OFF"); }

@@ -129,7 +129,7 @@ void MainMenu_Draw() {
         AEMtx33Rot(&r, atan2f(bgDirY, bgDirX));
         AEMtx33Scale(&s, 70, 70);
 
-        // --- UPDATED: Fleeing Player ---
+        // --- Fleeing Player ---
         AEMtx33Trans(&t, bgPlayerX, bgPlayerY + bP);
         AEMtx33Concat(&final, &t, &r); AEMtx33Concat(&final, &final, &s);
 
@@ -140,10 +140,7 @@ void MainMenu_Draw() {
             AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
 
             AEGfxSetBlendMode(AE_GFX_BM_BLEND);
-
-            // --- THE MISSING PIECE! ---
             AEGfxSetTransparency(1.0f);
-            // --------------------------
 
             // Use integers 0, 0 instead of floats
             AEGfxTextureSet(pBgPlayerTexture, 0, 0);
@@ -160,7 +157,7 @@ void MainMenu_Draw() {
         AEGfxSetTransform(final.m);
         AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
 
-        // Pursuing Enemy (Remains a Red Square)
+        // Pursuing Enemy
         AEMtx33Trans(&t, bgEnemyX, bgEnemyY + bE);
         AEMtx33Concat(&final, &t, &r); AEMtx33Concat(&final, &final, &s);
 
