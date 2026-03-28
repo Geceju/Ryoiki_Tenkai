@@ -41,6 +41,11 @@ void SimpleEnemy::Unload()
         AEGfxMeshFree(pMesh);
         pMesh = nullptr;
     }
+
+    if (s_pEnemyTexture) {
+        AEGfxTextureUnload(s_pEnemyTexture);
+        s_pEnemyTexture = nullptr;
+    }
 }
 
 void SimpleEnemy::SetPosition(float x, float y)
