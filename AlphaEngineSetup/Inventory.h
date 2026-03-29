@@ -44,11 +44,12 @@ public:
 	void AddItem(ItemType type);
 	bool UseItem(int slotIndex);
 	bool HasKey() const;
-	int GetKeyCount() const;  // Add this
+	int GetKeyCount() const;
 
-	// --- NEW METHODS ---
 	bool HasItem(ItemType type) const;    // Checks if the item exists
 	bool ConsumeItem(ItemType type);      // Uses the item and reduces count
+
+	void Clear();						  // Clears the inventory (for level transitions)
 
 private:
 	void CreateMeshes();

@@ -74,6 +74,13 @@ public:
 	// Reset all items
 	void Reset();
 
+	// Clear all items (for level transitions)
+	void Clear() {
+		items.clear();
+		items.shrink_to_fit();
+		printf("ItemsManager cleared! All items removed.\n");
+	}
+
 	// Get reference to items (for external processing)
 	std::vector<Item>& GetItems() { return items; }
 	const std::vector<Item>& GetItems() const { return items; }
