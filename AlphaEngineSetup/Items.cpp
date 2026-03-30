@@ -235,16 +235,16 @@ void ItemsManager::Update(float playerX, float playerY, float deltaTime) {
 				// Item effects (just for feedback)
 				switch (item.type) {
 				case ItemType::POINT:
-					printf("+10 Points! (Added to inventory)\n");
+					printf("item finding mushroom collected! (Added to inventory)\n");
 					break;
 				case ItemType::POWER_UP:
-					printf("Power-up collected! (Added to inventory)\n");
+					printf("speed mushroom collected! (Added to inventory)\n");
 					break;
 				case ItemType::SLOW_ENEMY:
-					printf("Enemies slowed! (Added to inventory)\n");
+					printf("stun mushroom collected! (Added to inventory)\n");
 					break;
 				case ItemType::KEY:
-					printf("KEY collected! You can now exit the dungeon!\n");
+					printf("KEY collected!\n");
 					break;
 				}
 

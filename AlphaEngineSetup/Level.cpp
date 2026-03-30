@@ -264,6 +264,12 @@ void Level_Init()
 		g_RunTimer = 0.0f;
 	}
 
+	if (gGameStateCurr == GS_RESTART) {
+		g_ItemsInitialized = false;  // Force fresh spawn
+		g_ItemsManager.Clear();       // Clear old items (you need to add this method)
+		printf("=== RESTARTING - Items will be respawned ===\n");
+	}
+
 	// Calculate current level mathematically
 	g_CurrentRunLevel = (gGameStateCurr - GS_LEVEL1) + 1;
 	if (gGameStateCurr == GS_LEVEL1) {
@@ -362,6 +368,11 @@ void Level_Init()
 
 	if (!g_ItemsInitialized)
 	{
+
+		// CRITICAL: Clear old items before spawning new ones
+		g_ItemsManager.Clear();
+		printf("=== Clearing old items before spawning fresh ===\n");
+
 		// --- SPAWN REGULAR ITEMS ---
 		for (const auto& room : g_DungeonRooms)
 		{
