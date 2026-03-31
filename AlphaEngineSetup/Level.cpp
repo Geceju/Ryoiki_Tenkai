@@ -44,6 +44,14 @@ static float invun_timer = 0.0f;
 // Tutorial State
 static bool s_ShowTutorial = false;
 
+// --- TUTORIAL TEXTURES ---
+static AEGfxTexture* tut_EnokiTex = nullptr;
+static AEGfxTexture* tut_EnemyTex = nullptr;
+static AEGfxTexture* tut_BlueMushTex = nullptr;
+static AEGfxTexture* tut_GreenMushTex = nullptr;
+static AEGfxTexture* tut_RedMushTex = nullptr;
+static AEGfxTexture* tut_KeyTex = nullptr;
+
 // Level state
 static bool g_RevealNeighbors = true;
 static Room* g_BossRoom = nullptr;
@@ -251,6 +259,13 @@ void Level_Load()
 	g_FontId = AEGfxCreateFont("Assets/exo2-regular.ttf", 20);
 	if (g_FontId < 0) g_FontId = AEGfxCreateFont("Assets\\exo2-regular.ttf", 20);
 
+	// --- LOAD TUTORIAL SPRITES ---
+	tut_EnokiTex = AEGfxTextureLoad("Assets/jogo.png");
+	tut_EnemyTex = AEGfxTextureLoad("Assets/enemy.png");
+	tut_BlueMushTex = AEGfxTextureLoad("Assets/bluemushroom.png"); // Check your filename!
+	tut_GreenMushTex = AEGfxTextureLoad("Assets/greenmushroom.png"); // Check your filename!
+	tut_RedMushTex = AEGfxTextureLoad("Assets/redmushroom.png"); // Check your filename!
+	tut_KeyTex = AEGfxTextureLoad("Assets/babycarrot.png");
 	TilesetManager::Load();
 
 	// Initialize items graphics (AFTER engine is ready)
@@ -774,13 +789,18 @@ void Level_Draw()
 				AEGfxPrint(g_FontId, (char*)"exit", textX, textY, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 		}
 	}
-
-	// Draw Items
-	// Draw Items (Now uses the official textured Draw function in Items.cpp!)
 	g_ItemsManager.Draw();
+	// --- DRAW ENEMY VISION CONES FIRST ---
+	AEGfxSetBlendMode(AE_GFX_BM_BLEND); // Ensure blending is ON for the cones
 	for (auto& enemy : g_Enemies)
 	{
-		enemy.Draw();
+		enemy.DrawVisionOverlay();
+	}
+
+	// --- DRAW ENEMY SPRITES SECOND ---
+	for (auto& enemy : g_Enemies)
+	{
+		enemy.Draw(); // This function handles its own internal states
 	}
 	// --- NEW: DRAW THE DARKNESS OVERLAY HERE ---
 	if (g_Character) {
@@ -1042,20 +1062,73 @@ void Level_Draw()
 		AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 0.90f); // 90% opacity black
 		AEGfxSetTransform(transform.m);
 		AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
-		AEGfxSetBlendMode(AE_GFX_BM_NONE);
 
-		// Draw the Tutorial Text
+		// Helper function to draw UI Sprites locked to the screen
+		auto DrawUISprite = [&](AEGfxTexture* tex, float ndcX, float ndcY, float size) {
+			if (!tex) return;
+
+			// CRITICAL FIX: Use Engine World Bounds instead of raw pixels!
+			// This perfectly synchronizes with AEGfxPrint's internal coordinate system.
+			float worldOffsetX = ndcX * AEGfxGetWinMaxX();
+			float worldOffsetY = ndcY * AEGfxGetWinMaxY();
+
+			AEMtx33 s, t, finalMtx;
+			AEMtx33Scale(&s, size, size);
+			AEMtx33Trans(&t, camX + worldOffsetX, camY + worldOffsetY);
+			AEMtx33Concat(&finalMtx, &t, &s);
+
+			AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
+			AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+			AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
+			AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
+			AEGfxTextureSet(tex, 0.0f, 0.0f);
+
+			AEGfxSetTransform(finalMtx.m);
+			AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
+			};
+
+		// Draw the Tutorial Text and Sprites
+		AEGfxSetBlendMode(AE_GFX_BM_BLEND); // Required for text transparency
 		if (g_FontId >= 0) {
-			AEGfxPrint(g_FontId, (char*)"HOW TO PLAY", -0.125f, 0.6f, 1.5f, 0.0f, 1.0f, 1.0f, 1.0f); // Cyan
+			AEGfxPrint(g_FontId, (char*)"HOW TO PLAY", -0.125f, 0.7f, 1.5f, 0.0f, 1.0f, 1.0f, 1.0f); // Cyan
 
-			AEGfxPrint(g_FontId, (char*)"WASD : Move Enoki Ninja", -0.153f, 0.25f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
-			AEGfxPrint(g_FontId, (char*)"1, 2, 3 : Use Hotbar Abilities", -0.165f, 0.10f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
-			AEGfxPrint(g_FontId, (char*)"E : Unlock Exit Door (Requires 3 Keys)", -0.228f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+			// ALIGNMENT GRID: Change these to shift the entire column left or right!
+			float textX = -0.20f;
+			float sprX = 0.05f;
+			float yAdj = -0.60f; // Pushes the sprite up slightly to perfectly center with text
 
-			AEGfxPrint(g_FontId, (char*)"Avoid the Pursuing Enemies!", -0.175f, -0.3f, 1.0f, 1.0f, 0.2f, 0.2f, 1.0f); // Red
+			// Basic Controls
+			DrawUISprite(tut_EnokiTex, sprX, 0.4f + yAdj, 50.0f);
+			AEGfxPrint(g_FontId, (char*)"WASD : Move Enoki Ninja", textX, 0.4f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 
-			AEGfxPrint(g_FontId, (char*)"Press [ENTER] to Start", -0.13f, -0.6f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f); // Green
+			// Item 1: Speed (Blue)
+			DrawUISprite(tut_BlueMushTex, sprX, 0.2f + yAdj, 50.0f);
+			AEGfxPrint(g_FontId, (char*)"1 : Blue Mushroom gives a Speed Boost!", textX, 0.2f, 1.0f, 0.2f, 0.6f, 1.0f, 1.0f);
+
+			// Item 2: Stun (Green)
+			DrawUISprite(tut_GreenMushTex, sprX, 0.0f + yAdj, 50.0f);
+			AEGfxPrint(g_FontId, (char*)"2 : Green Mushroom Stuns all enemies!", textX, 0.0f, 1.0f, 0.2f, 1.0f, 0.2f, 1.0f);
+
+			// Item 3: Vision (Red)
+			DrawUISprite(tut_RedMushTex, sprX, -0.2f + yAdj, 50.0f);
+			AEGfxPrint(g_FontId, (char*)"3 : Red Mushroom finds the nearest key!", textX, -0.2f, 1.0f, 1.0f, 0.2f, 0.2f, 1.0f);
+
+			// Key & Door
+			DrawUISprite(tut_KeyTex, sprX, -0.4f + yAdj, 50.0f);
+			AEGfxPrint(g_FontId, (char*)"E : Unlock Exit Door (Requires 3 Keys)", textX, -0.4f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f);
+
+			// Enemy Warning
+			DrawUISprite(tut_EnemyTex, sprX, -0.6f + yAdj, 60.0f);
+			AEGfxPrint(g_FontId, (char*)"Avoid the Pursuing Enemies!", textX, -0.6f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f);
+
+			// Start Prompt
+			AEGfxPrint(g_FontId, (char*)"Press [ENTER] to Start", -0.15f, -0.85f, 1.2f, 0.0f, 1.0f, 0.0f, 1.0f); // Green
 		}
+
+		// Reset Engine State safely
+		AEGfxTextureSet(nullptr, 0.0f, 0.0f);
+		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+		AEGfxSetBlendMode(AE_GFX_BM_NONE);
 	}
 	// -----------------------------
 }
@@ -1084,6 +1157,13 @@ void Level_Unload()
 		AEGfxDestroyFont(g_FontId);
 		g_FontId = -1;
 	}
+	// --- UNLOAD TUTORIAL SPRITES ---
+	if (tut_EnokiTex) { AEGfxTextureUnload(tut_EnokiTex); tut_EnokiTex = nullptr; }
+	if (tut_EnemyTex) { AEGfxTextureUnload(tut_EnemyTex); tut_EnemyTex = nullptr; }
+	if (tut_BlueMushTex) { AEGfxTextureUnload(tut_BlueMushTex); tut_BlueMushTex = nullptr; }
+	if (tut_GreenMushTex) { AEGfxTextureUnload(tut_GreenMushTex); tut_GreenMushTex = nullptr; }
+	if (tut_RedMushTex) { AEGfxTextureUnload(tut_RedMushTex); tut_RedMushTex = nullptr; }
+	if (tut_KeyTex) { AEGfxTextureUnload(tut_KeyTex); tut_KeyTex = nullptr; }
 
 	// Free the primary unit square mesh.
 	if (g_pUnitSquare) {

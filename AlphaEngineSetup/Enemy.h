@@ -26,6 +26,8 @@ public:
     // Abilties
     void Stun(float duration);
     bool IsStunned() const { return stunTimer > 0.0f; }
+    void LoadVisionMesh();
+    void DrawVisionOverlay();
 
 private:
     float worldX, worldY;
@@ -35,7 +37,9 @@ private:
     float giveUpRange;
     float chaseTimer;
     float maxChaseTime;
+    float facingAngle;
     bool hasPatrolTarget;
+    AEGfxVertexList* pVisionMesh;
 
 public:
     EnemyState currentState;

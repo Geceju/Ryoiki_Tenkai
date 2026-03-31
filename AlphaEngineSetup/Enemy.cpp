@@ -10,7 +10,8 @@ SimpleEnemy::SimpleEnemy()
     speed(200.0f), detectionRange(500.0f), giveUpRange(150.0f),
     currentState(EnemyState::IDLE), pMesh(nullptr),
     currentPathIndex(0), pathRecalculateTimer(0.0f),chaseTimer(0.0f),
-    hasPatrolTarget(false),maxChaseTime(5.0f),stunTimer(0.0f)// Initialize pathing vars
+    hasPatrolTarget(false),maxChaseTime(5.0f),stunTimer(0.0f),
+    facingAngle(0.0f), pVisionMesh(nullptr) // FIX: Initialize these here
 {
 }
 
@@ -32,6 +33,8 @@ void SimpleEnemy::Load()
     AEGfxTriAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f, 0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
     AEGfxTriAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, 0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
     pMesh = AEGfxMeshEnd();
+
+    LoadVisionMesh();
 }
 
 void SimpleEnemy::Unload()
@@ -64,6 +67,7 @@ void SimpleEnemy::Stun(float duration)
         stunTimer = duration;
     }
 }
+
 
 void SimpleEnemy::Update(float playerX, float playerY, float dt, const std::vector<std::unique_ptr<Room>>& rooms)
 {
@@ -424,4 +428,56 @@ bool SimpleEnemy::IsPositionWalkable(float x, float y, const std::vector<std::un
     }
     // Void outside all rooms is treated as a wall
     return false;
+}
+void SimpleEnemy::LoadVisionMesh() {
+    if (pVisionMesh) return;
+
+    AEGfxMeshStart();
+    int segments = 24; // Increased slightly for a smoother wide curve
+
+    // WIDER: Changed from 45 degrees to 90 degrees
+    float coneAngle = 90.0f * (3.14159265f / 180.0f);
+
+    // SHORTER: Hardcoded to 300 instead of the massive 500 detectionRange
+    float visionDist = 300.0f;
+
+    // The Tip of the cone (at enemy center)
+    for (int i = 0; i < segments; ++i) {
+        float a1 = -coneAngle / 2.0f + (i * coneAngle / segments);
+        float a2 = -coneAngle / 2.0f + ((i + 1) * coneAngle / segments);
+
+        // Triangle: Center -> Point1 on arc -> Point2 on arc
+        AEGfxTriAdd(0.0f, 0.0f, 0x88FF0000, 0, 0,
+            cosf(a1) * visionDist, sinf(a1) * visionDist, 0x00FF0000, 0, 0,
+            cosf(a2) * visionDist, sinf(a2) * visionDist, 0x00FF0000, 0, 0);
+    }
+    pVisionMesh = AEGfxMeshEnd();
+}
+
+void SimpleEnemy::DrawVisionOverlay() {
+    if (!pVisionMesh || currentState == EnemyState::IDLE || stunTimer > 0.0f) return;
+
+    // Update facing angle based on movement direction
+    if (!currentPath.empty() && currentPathIndex < currentPath.size()) {
+        AEVec2 target = currentPath[currentPathIndex];
+        facingAngle = atan2f(target.y - worldY, target.x - worldX);
+    }
+
+    AEMtx33 scale, rot, trans, transform;
+    AEMtx33Scale(&scale, 1.0f, 1.0f);
+    AEMtx33Rot(&rot, facingAngle);
+    AEMtx33Trans(&trans, worldX, worldY);
+    AEMtx33Concat(&transform, &trans, &rot);
+
+    AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+
+    // CRITICAL FIX: Additive Blending makes it act like a glowing light source!
+    AEGfxSetBlendMode(AE_GFX_BM_ADD);
+
+    AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
+    AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
+
+    AEGfxSetTransform(transform.m);
+    AEGfxMeshDraw(pVisionMesh, AE_GFX_MDM_TRIANGLES);
+    AEGfxSetBlendMode(AE_GFX_BM_NONE);
 }
