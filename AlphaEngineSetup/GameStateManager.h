@@ -13,7 +13,8 @@ typedef enum
     GS_LEVEL4,
     GS_LEVEL5,
     GS_LEVEL6,
-    GS_NONE       // A placeholder used during initial startup
+    GS_NONE,
+    GS_CREDIT,
 } GAME_STATE;
 
 // Global trackers for the state machine to determine when to switch logic blocks

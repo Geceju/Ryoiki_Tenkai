@@ -12,7 +12,7 @@ struct Button {
     float x, y, scaleX, scaleY, r, g, b;
 };
 
-static Button btnPlay, btnSettings, btnLeaderboard, btnExit;
+static Button btnPlay, btnSettings, btnLeaderboard, btnCredit, btnExit;
 static AEGfxVertexList* pMeshButton = nullptr;
 static s8 g_FontIdMenu = -1;
 static s8 g_FontIdTitle = -1;
@@ -55,7 +55,8 @@ void MainMenu_Initialize() {
     btnPlay = { 0.0f, 100.0f, 200.0f, 60.0f, bR, bG, bB };
     btnSettings = { 0.0f, 20.0f, 200.0f, 60.0f, bR, bG, bB };
     btnLeaderboard = { 0.0f, -60.0f, 200.0f, 60.0f, bR, bG, bB };
-    btnExit = { 0.0f, -140.0f, 200.0f, 60.0f, bR, bG, bB };
+    btnCredit = { 0.0f, -140.0f, 200.0f, 60.0f, bR, bG, bB };
+    btnExit = { 0.0f, -220.0f, 200.0f, 60.0f, bR, bG, bB };
 
     showSettingsMenu = false;
     showLeaderboard = false;
@@ -92,6 +93,7 @@ void MainMenu_Update() {
     if (Collision_PointInButton(worldMX, worldMY, btnPlay.x, btnPlay.y, btnPlay.scaleX, btnPlay.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) gGameStateNext = GS_LEVEL1;
     if (Collision_PointInButton(worldMX, worldMY, btnSettings.x, btnSettings.y, btnSettings.scaleX, btnSettings.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) showSettingsMenu = true;
     if (Collision_PointInButton(worldMX, worldMY, btnLeaderboard.x, btnLeaderboard.y, btnLeaderboard.scaleX, btnLeaderboard.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) showLeaderboard = true;
+    if (Collision_PointInButton(worldMX, worldMY, btnCredit.x, btnCredit.y, btnCredit.scaleX, btnCredit.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) gGameStateNext = GS_CREDIT;
     if (Collision_PointInButton(worldMX, worldMY, btnExit.x, btnExit.y, btnExit.scaleX, btnExit.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) gGameStateNext = GS_QUIT;
 
     // Background logic
@@ -216,6 +218,7 @@ void MainMenu_Draw() {
     DrawBtn(btnPlay, "Start", -0.035f);
     DrawBtn(btnSettings, "Settings", -0.055f); // balanced offset for "Settings"
     DrawBtn(btnLeaderboard, "Scores", -0.045f); // Draw new button
+    DrawBtn(btnCredit, "Credits", -0.045f);
     DrawBtn(btnExit, "Exit", -0.025f);
 
     // Title centered at tested X coordinate
