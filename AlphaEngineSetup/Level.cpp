@@ -225,17 +225,19 @@ static bool IsTileReachable(Room* room, int startX, int startY, int targetX, int
 void Level_Load()
 {
 	AEGfxMeshStart();
-	// Triangle 1: Top-Left, Bottom-Left, Top-Right
-	AEGfxTriAdd(
-		-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f,
-		-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f,
-		0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f);
 
-	// Triangle 2: Bottom-Left, Bottom-Right, Top-Right
+	// Triangle 1
 	AEGfxTriAdd(
 		-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f,
 		0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
-		0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f);
+		-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+
+	// Triangle 2
+	AEGfxTriAdd(
+		0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
+		0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f,
+		-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+
 	g_pUnitSquare = AEGfxMeshEnd();
 
 	AEGfxMeshStart();
@@ -248,6 +250,8 @@ void Level_Load()
 
 	g_FontId = AEGfxCreateFont("Assets/exo2-regular.ttf", 20);
 	if (g_FontId < 0) g_FontId = AEGfxCreateFont("Assets\\exo2-regular.ttf", 20);
+
+	TilesetManager::Load();
 
 	// Initialize items graphics (AFTER engine is ready)
 	g_ItemsManager.InitializeGraphics();
@@ -705,51 +709,40 @@ void Level_Draw()
 		AEMtx33Scale(&scale, (float)room->rect.width(), (float)room->rect.height());
 		AEMtx33Trans(&trans, room->rect.GetCenter().x, room->rect.GetCenter().y);
 		AEMtx33Concat(&transform, &trans, &scale);
+
+		// 1. SET TRANSFORM (Like the demo)
 		AEGfxSetTransform(transform.m);
-
-		AEGfxSetBlendMode(AE_GFX_BM_BLEND); // Enables transparency for PNGs.
-
-		// Validates the texture pointer before enabling texture rendering.
-		if (style.pTexture != nullptr)
-		{
-			// Switches the engine to texture mapping mode.
-			AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
-			// Binds the texture and applies tiling based on the ratio of room size to tile size.
-			AEGfxTextureSet(style.pTexture, 1.0f, 1.0f);
-
-			//Set to white so the texture isn't darkened/blackened by the tileset color
-			AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
+		
+		// --- NEW RENDER LOGIC: GRAYSCALE DEFAULT / DEBUG COLOR TOGGLE ---
+		if (room->type == RoomType::Start) {
+			// Start Room is always a unique color to identify it
+			AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+			AEGfxSetColorToMultiply(0.0f, 0.8f, 0.0f, 1.0f); // Vibrant Green
 		}
-		else
-		{
-			// Falls back to solid color mode if no valid texture is found.
+		else if (room->type == RoomType::Boss) {
+			// Boss Room is always a unique color to identify it
+			AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+			AEGfxSetColorToMultiply(0.8f, 0.0f, 0.0f, 1.0f); // Vibrant Red
+		}
+		else if (!g_ShowColors) {
+			// BASE MODE: Uniform Grayscale for standard rooms
+			AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+			AEGfxSetColorToMultiply(0.3f, 0.3f, 0.3f, 1.0f); // Medium Gray
+		}
+		else {
+			// DEBUG MODE: Use the specific tileset color (Purple, Blue, etc.)
 			AEGfxSetRenderMode(AE_GFX_RM_COLOR);
 			AEGfxSetColorToMultiply(style.r, style.g, style.b, 1.0f);
-
-			// Adjusts the color multiplier for both textures (as a tint) and solid colors.
-			if (room->type == RoomType::Boss)
-			{
-				// Tints the boss room red.
-				AEGfxSetColorToMultiply(1.0f, 0.0f, 0.0f, 1.0f);
-			}
-			else if (!g_ShowColors)
-			{
-				// Renders rooms in gray if color display is disabled.
-				AEGfxSetColorToMultiply(0.5f, 0.5f, 0.5f, 1.0f);
-			}
-			else
-			{
-				// Tints the start room green or uses the tileset default color.
-				if (room->type == RoomType::Start) AEGfxSetColorToMultiply(0.0f, 1.0f, 0.0f, 1.0f);
-				else AEGfxSetColorToMultiply(style.r, style.g, style.b, 1.0f);
-			}
 		}
 
 		// Executes the draw call for the floor quad.
 		AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
 
-		// Resets the render mode to color for wall drawing.
+		// RESET STATE for wall drawing
+		AEGfxTextureSet(nullptr, 0.0f, 0.0f);
 		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+		AEGfxSetBlendMode(AE_GFX_BM_NONE);
+		// ==========================================
 
 		// Logic for drawing individual wall tiles within the room.
 		AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 1.0f);

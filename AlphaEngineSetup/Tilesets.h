@@ -52,8 +52,10 @@ public:
 	 */
 	static TilesetType GetRandom();
 
+	static AEGfxTexture* s_pBossTexture;
+
 private:
-	static std::vector<TilesetData> s_List; /**< Internal storage for tileset data. */
+	static std::vector<TilesetData> s_List; 
 };
 
 #endif

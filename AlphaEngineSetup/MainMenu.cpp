@@ -126,73 +126,53 @@ void MainMenu_Draw() {
     if (bgIsRunning) {
         float bP = fabsf(sinf(g_TotalTime * 15.0f)) * 10.0f;
         float bE = fabsf(sinf(g_TotalTime * 15.0f - 1.0f)) * 10.0f;
-        AEMtx33Rot(&r, atan2f(bgDirY, bgDirX));
-        AEMtx33Scale(&s, 70, 70);
+
+        // 1. Calculate horizontal flip: 1.0 is right, -1.0 is left
+        float flipX = (bgDirX >= 0) ? 1.0f : -1.0f;
+
+        // 2. Fix the Rotation: Keep it 0.0f so they stay right-side up
+        AEMtx33Rot(&r, 0.0f);
 
         // --- Fleeing Player ---
+        // Apply flipX to the Scale matrix
+        AEMtx33Scale(&s, 70.0f * flipX, 70.0f);
         AEMtx33Trans(&t, bgPlayerX, bgPlayerY + bP);
-        AEMtx33Concat(&final, &t, &r); AEMtx33Concat(&final, &final, &s);
+        AEMtx33Concat(&final, &t, &r);
+        AEMtx33Concat(&final, &final, &s);
 
         if (pBgPlayerTexture != nullptr) {
-            // SUCCESS! Set up the exact render state from the demo:
             AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
             AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
             AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
-
             AEGfxSetBlendMode(AE_GFX_BM_BLEND);
             AEGfxSetTransparency(1.0f);
-
-            // Use integers 0, 0 instead of floats
-            AEGfxTextureSet(pBgPlayerTexture, 0, 0);
-        }
-        else {
-            // FAILED! Draw Magenta.
-            AEGfxSetRenderMode(AE_GFX_RM_COLOR);
-            AEGfxSetColorToMultiply(1.0f, 0.0f, 1.0f, 1.0f);
-            AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
-            AEGfxSetBlendMode(AE_GFX_BM_NONE);
-            AEGfxTextureSet(nullptr, 0, 0);
+            AEGfxTextureSet(pBgPlayerTexture, 0.0f, 0.0f);
         }
 
         AEGfxSetTransform(final.m);
         AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
 
-        // Pursuing Enemy
+        // --- Pursuing Enemy ---
+        // Re-apply scale with flipX for the enemy
+        AEMtx33Scale(&s, 70.0f * flipX, 70.0f);
         AEMtx33Trans(&t, bgEnemyX, bgEnemyY + bE);
-        AEMtx33Concat(&final, &t, &r); AEMtx33Concat(&final, &final, &s);
+        AEMtx33Concat(&final, &t, &r);
+        AEMtx33Concat(&final, &final, &s);
 
         if (pBgEnemyTexture != nullptr) {
-            // SUCCESS! Set up the texture state
             AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
-
-            // Set to pure white to display original image
             AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
-            AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
-
             AEGfxSetBlendMode(AE_GFX_BM_BLEND);
-            AEGfxSetTransparency(1.0f);
-            AEGfxTextureSet(pBgEnemyTexture, 0, 0);
-        }
-        else {
-            // FAILED! Draw a solid red square as a fallback
-            AEGfxSetRenderMode(AE_GFX_RM_COLOR);
-            AEGfxSetColorToMultiply(1.0f, 0.0f, 0.0f, 1.0f);
-            AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
-            AEGfxSetBlendMode(AE_GFX_BM_NONE);
-            AEGfxTextureSet(nullptr, 0, 0);
+            AEGfxTextureSet(pBgEnemyTexture, 0.0f, 0.0f);
         }
 
         AEGfxSetTransform(final.m);
         AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
 
-        // 2. THEN RESET back to normal colors for the rest of the Menu UI
+        // Reset state
         AEGfxTextureSet(nullptr, 0, 0);
         AEGfxSetRenderMode(AE_GFX_RM_COLOR);
         AEGfxSetBlendMode(AE_GFX_BM_NONE);
-
-        //AEGfxSetColorToMultiply(1, 0, 0, 1);
-        //AEGfxSetTransform(final.m);
-        //AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
     }
 
     float winHalfH = (float)AEGfxGetWindowHeight() / 2.0f;

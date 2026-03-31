@@ -13,8 +13,6 @@
 
 std::vector<std::unique_ptr<Room>> RoomGenerator::Generate(int width, int height, int roomSize)
 {
-    TilesetManager::Load();
-
     // load predefined structural layouts
     TemplateManager::LoadTemplates();
 
