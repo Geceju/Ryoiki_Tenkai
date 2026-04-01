@@ -455,7 +455,7 @@ void SimpleEnemy::LoadVisionMesh() {
 }
 
 void SimpleEnemy::DrawVisionOverlay() {
-    if (!pVisionMesh || currentState == EnemyState::IDLE || stunTimer > 0.0f) return;
+    if (!pVisionMesh || currentState != EnemyState::CHASE || stunTimer > 0.0f) return;
 
     // Update facing angle based on movement direction
     if (!currentPath.empty() && currentPathIndex < currentPath.size()) {
@@ -470,10 +470,7 @@ void SimpleEnemy::DrawVisionOverlay() {
     AEMtx33Concat(&transform, &trans, &rot);
 
     AEGfxSetRenderMode(AE_GFX_RM_COLOR);
-
-    // CRITICAL FIX: Additive Blending makes it act like a glowing light source!
     AEGfxSetBlendMode(AE_GFX_BM_ADD);
-
     AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
     AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
 
