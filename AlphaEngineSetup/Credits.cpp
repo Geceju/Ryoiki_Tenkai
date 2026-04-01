@@ -126,19 +126,21 @@ void Credits_Draw() {
 
         // 3. Transformation
         AEMtx33 scale, trans, total;
-        AEMtx33Scale(&scale, 1.8f, 0.6f);
+        AEMtx33Scale(&scale, AEGfxGetWindowWidth()-400.0f, AEGfxGetWindowHeight()-400.0f);
         AEMtx33Trans(&trans, 0.0f, 0.0f);
         AEMtx33Concat(&total, &trans, &scale);
         AEGfxSetTransform(total.m);
 
         // 4. Bind and Draw
         if (pLogo != nullptr) {
+
             AEGfxTextureSet(pLogo, 0, 0);
             AEGfxMeshDraw(pSquareMesh, AE_GFX_MDM_TRIANGLES);
         }
 
         AEMtx33Identity(&total);
         AEGfxSetTransform(total.m);
+
         AEGfxSetRenderMode(AE_GFX_RM_COLOR);
 
         char copyright[] = "All content (c) 2026 DigiPen Institute";
