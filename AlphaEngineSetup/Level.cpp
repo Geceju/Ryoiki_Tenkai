@@ -39,6 +39,14 @@ static int g_Difficulty = 1;
 static int lives = 3;
 static float invun_timer = 0.0f;
 
+// --- JUICE & VISUAL EFFECTS ---
+struct DamageParticle {
+	float x, y, vx, vy, life, maxLife;
+};
+static std::vector<DamageParticle> g_DamageParticles;
+static float g_ScreenShakeTimer = 0.0f;
+static AEGfxTexture* g_pJumpscareTex = nullptr;
+
 // END ENTITY DATA
 
 // Tutorial State
@@ -270,8 +278,9 @@ void Level_Load()
 
 	// Initialize items graphics (AFTER engine is ready)
 	g_ItemsManager.InitializeGraphics();
-	g_Inventory.Load();  // ADD THIS
-
+	g_Inventory.Load();
+	// Jumpscare img
+	g_pJumpscareTex = AEGfxTextureLoad("Assets/enemy.png");
 	// Load shared settings menu resources
 	SettingsMenu_Load();
 }
@@ -298,6 +307,9 @@ void Level_Init()
 	else {
 		s_ShowTutorial = false; // Hide it on deeper levels
 	}
+	// Damage Particles clear
+	g_DamageParticles.clear();
+	g_ScreenShakeTimer = 0.0f;
 
 	RoomGenerator generator;
 	g_DungeonRooms = generator.Generate(3072, 3072, 512);
@@ -647,7 +659,26 @@ void Level_Update()
 		g_Character->UpdateAbilities(dt, g_Enemies, g_ItemsManager, g_DungeonRooms);
 		g_Character->CheckItemCollection(g_ItemsManager);
 
-		AEGfxSetCamPosition(g_Character->GetWorldX(), g_Character->GetWorldY());
+		// --- UPDATE DAMAGE PARTICLES ---
+		for (auto it = g_DamageParticles.begin(); it != g_DamageParticles.end(); ) {
+			it->x += it->vx * dt;
+			it->y += it->vy * dt;
+			it->life -= dt;
+			if (it->life <= 0.0f) it = g_DamageParticles.erase(it);
+			else ++it;
+		}
+
+		// --- UPDATE CAMERA WITH SCREEN SHAKE ---
+		float camX = g_Character->GetWorldX();
+		float camY = g_Character->GetWorldY();
+
+		if (g_ScreenShakeTimer > 0.0f) {
+			g_ScreenShakeTimer -= dt;
+			// Shake the camera wildly by up to 15 pixels in any direction
+			camX += (float)((rand() % 30) - 15);
+			camY += (float)((rand() % 30) - 15);
+		}
+		AEGfxSetCamPosition(camX, camY);
 
 		// Room Discovery
 		for (auto& room : g_DungeonRooms)
@@ -679,6 +710,20 @@ void Level_Update()
 				s_EnemyContact = true;
 				lives--;
 				g_Character->TriggerStun(g_Enemies);
+
+				// --- TRIGGER IMPACT JUICE ---
+				g_ScreenShakeTimer = 0.35f; // 0.35 seconds of violent shake
+
+				// Spawn 40 blood/spark particles bursting outward
+				for (int i = 0; i < 40; ++i) {
+					float angle = (float)(rand() % 360) * 3.14159f / 180.0f;
+					float speed = (float)((rand() % 400) + 150); // Explode outwards fast
+					g_DamageParticles.push_back({
+						playerWorldX, playerWorldY,
+						cosf(angle) * speed, sinf(angle) * speed,
+						0.4f, 0.4f // Live for 0.4 seconds
+						});
+				}
 			}
 		}
 
@@ -802,13 +847,31 @@ void Level_Draw()
 	{
 		enemy.Draw(); // This function handles its own internal states
 	}
-	// --- NEW: DRAW THE DARKNESS OVERLAY HERE ---
+	// --- DRAW THE DARKNESS OVERLAY HERE ---
 	if (g_Character) {
 		g_Character->DrawVisionOverlay();
 
 		// Draw the Player and Abilities LAST so they sit on top of the darkness
 		g_Character->DrawAbilities();
 		g_Character->Draw();
+	}
+	// --- DRAW DAMAGE PARTICLES ---
+	if (!g_DamageParticles.empty()) {
+		AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+		for (const auto& p : g_DamageParticles) {
+			float alpha = p.life / p.maxLife; // Fade out as they die
+			AEGfxSetColorToMultiply(1.0f, 0.0f, 0.0f, alpha); // Red Blood
+
+			AEMtx33 scale, trans, transform;
+			AEMtx33Scale(&scale, 8.0f, 8.0f); // Small 8x8 pixel chunks
+			AEMtx33Trans(&trans, p.x, p.y);
+			AEMtx33Concat(&transform, &trans, &scale);
+
+			AEGfxSetTransform(transform.m);
+			AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
+		}
+		AEGfxSetBlendMode(AE_GFX_BM_NONE);
 	}
 	// -------------------------------------------
 
@@ -1023,28 +1086,50 @@ void Level_Draw()
 
 	if (lives <= 0)
 	{
-		// Draw a semi-transparent dark background
 		float camX = g_Character ? g_Character->GetWorldX() : 0.0f;
 		float camY = g_Character ? g_Character->GetWorldY() : 0.0f;
 
+		// JUMPSCARE SHAKE: Violently shake the camera forever while dead
+		camX += (float)((rand() % 60) - 30);
+		camY += (float)((rand() % 60) - 30);
+
+		// 1. Draw Pitch Black Background
 		AEMtx33 scale, trans, transform;
-		AEMtx33Scale(&scale, 4000.0f, 4000.0f); // Make it huge to cover the screen
+		AEMtx33Scale(&scale, 4000.0f, 4000.0f);
 		AEMtx33Trans(&trans, camX, camY);
 		AEMtx33Concat(&transform, &trans, &scale);
 
 		AEGfxSetBlendMode(AE_GFX_BM_BLEND);
 		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
-		AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 0.85f); // 85% opacity black
+		AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 1.0f); // Solid Black
 		AEGfxSetTransform(transform.m);
 		AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
-		AEGfxSetBlendMode(AE_GFX_BM_NONE);
 
-		// Draw the Text (Using NDC coordinates so it sticks to the screen)
-		if (g_FontId >= 0) {
-			AEGfxPrint(g_FontId, (char*)"You Lose", -0.1f, 0.3f, 1.5f, 1.0f, 0.0f, 0.0f, 1.0f); // Green text
+		// 2. Draw Giant Red Jumpscare Face!
+		if (g_pJumpscareTex) {
+			AEMtx33Scale(&scale, 1500.0f, 1500.0f); // Massive Scale!
+			AEMtx33Trans(&trans, camX, camY);
+			AEMtx33Concat(&transform, &trans, &scale);
 
-			AEGfxPrint(g_FontId, (char*)"Press [BACKSPACE] to Return to Menu", -0.25f, -0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+			AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
+			AEGfxSetColorToMultiply(1.0f, 0.0f, 0.0f, 1.0f); // Tint it bloody red
+			AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
+			AEGfxTextureSet(g_pJumpscareTex, 0.0f, 0.0f);
+
+			AEGfxSetTransform(transform.m);
+			AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
 		}
+
+		// 3. Draw "You Died" Text
+		if (g_FontId >= 0) {
+			AEGfxPrint(g_FontId, (char*)"YOU DIED", -0.1f, 0.3f, 2.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+			AEGfxPrint(g_FontId, (char*)"Press [BACKSPACE] to Return to Menu", -0.28f, -0.4f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+		}
+
+		// Reset Engine State
+		AEGfxTextureSet(nullptr, 0.0f, 0.0f);
+		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+		AEGfxSetBlendMode(AE_GFX_BM_NONE);
 	}
 	// --- DRAW TUTORIAL OVERLAY ---
 	if (s_ShowTutorial) {
@@ -1187,6 +1272,8 @@ void Level_Unload()
 	for (auto& enemy : g_Enemies) {
 		enemy.Unload();
 	}
+	// Jumpscare free
+	if (g_pJumpscareTex) { AEGfxTextureUnload(g_pJumpscareTex); g_pJumpscareTex = nullptr; }
 	// Empties the enemy container.
 	g_Enemies.clear();
 }
