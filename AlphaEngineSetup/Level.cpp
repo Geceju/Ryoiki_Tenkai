@@ -9,6 +9,7 @@
 #include "Tilesets.h" 
 #include "Inventory.h"
 #include "Leaderboard.h"
+#include "AudioSystem.h"
 #include <cstdio> 
 #include <cmath>  
 #include <queue> 
@@ -274,6 +275,29 @@ void Level_Load()
 
 	// Load shared settings menu resources
 	SettingsMenu_Load();
+
+
+	// <----------------------------- SOUND LOADING ---------------------------------->
+
+	// Load audio assets
+	AudioSystem::Init();
+
+	// ADD SOUNDS BELOW USING AudioSystem::LoadSound
+	// Click on the function definition in AudioSystem.h for instructions on how to use it. It's very straightforward.
+	// !!! Take note: Whatever nickname you give the specific audio file, REMEMBER IT. !!!
+	// You can simply do AudioSystem::Play(nickname) to play the sound for future uses.
+
+	// BGMs
+	AudioSystem::LoadSound("bgm_main", "Assets/Audio/Music/main_theme.mp3", true);
+
+	// Player SFX
+	AudioSystem::LoadSound("sfx_jump", "Assets/Audio/SFX/Player/jump.wav", false);
+	AudioSystem::LoadSound("sfx_hurt", "Assets/Audio/SFX/Player/hit.wav" , false);
+
+	// Enemy SFX
+	
+
+	// <------------------------------------------------------------------------------->
 }
 
 void Level_Init()
