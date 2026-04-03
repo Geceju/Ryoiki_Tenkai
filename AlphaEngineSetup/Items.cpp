@@ -288,3 +288,15 @@ void ItemsManager::Reset() {
 bool ItemsManager::AllItemsCollected() const {
 	return GetCollectedCount() == GetTotalCount() && GetTotalCount() > 0;
 }
+
+// Get collected keys count
+int ItemsManager::GetCollectedKeyCount() const {
+	return static_cast<int>(std::count_if(items.begin(), items.end(),
+		[](const Item& item) { return item.type == ItemType::KEY && item.collected; }));
+}
+
+// Get total keys count
+int ItemsManager::GetTotalKeyCount() const {
+	return static_cast<int>(std::count_if(items.begin(), items.end(),
+		[](const Item& item) { return item.type == ItemType::KEY; }));
+}

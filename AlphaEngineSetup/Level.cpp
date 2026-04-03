@@ -23,6 +23,7 @@ static bool g_AllItemsCollectedMessageShown = false;
 
 // global variables for the level data
 static std::vector<std::unique_ptr<Room>> g_DungeonRooms;
+static AEGfxTexture* g_texWall = nullptr;  //wall
 
 // geometry pointers
 static AEGfxVertexList* g_pUnitSquare = nullptr;
@@ -224,6 +225,9 @@ void Level_Load()
 
 	g_FontId = AEGfxCreateFont("Assets/exo2-regular.ttf", 20);
 	if (g_FontId < 0) g_FontId = AEGfxCreateFont("Assets\\exo2-regular.ttf", 20);
+
+	// wall texture
+	g_texWall = AEGfxTextureLoad("Assets/Assets/stone-texture-background.jpg");
 
 	// Initialize items graphics (AFTER engine is ready)
 	g_ItemsManager.InitializeGraphics();
@@ -594,7 +598,7 @@ void Level_Update()
 			float dy = playerWorldY - enemy.GetWorldY();
 			float distToPlayer = dx * dx + dy * dy;
 			// 625 = 25^2
-			if (distToPlayer < 625 && !s_EnemyContact) {
+			if (distToPlayer < 625 && !s_EnemyContact && !enemy.IsStunned()) {
 				s_EnemyContact = true;
 				lives--;
 				g_Character->TriggerStun(g_Enemies);
@@ -647,6 +651,9 @@ void Level_Draw()
 		AEMtx33Concat(&transform, &trans, &scale);
 		AEGfxSetTransform(transform.m);
 
+		// --- DRAW FLOOR (Reverted to colors) ---
+		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+
 		if (room->type == RoomType::Boss) AEGfxSetColorToMultiply(1.0f, 0.0f, 0.0f, 1.0f);
 		else if (!g_ShowColors) AEGfxSetColorToMultiply(0.5f, 0.5f, 0.5f, 1.0f);
 		else
@@ -656,8 +663,11 @@ void Level_Draw()
 		}
 		AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
 
-		// Draw Walls
-		AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 1.0f);
+		// --- DRAW WALLS ---
+		AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
+		AEGfxTextureSet(g_texWall, 0, 0);
+		AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f); // Pure true-color texture for walls
+
 		for (int y = 0; y < room->tileCountY; ++y)
 		{
 			for (int x = 0; x < room->tileCountX; ++x)
@@ -677,6 +687,10 @@ void Level_Draw()
 
 		if (room->type == RoomType::Boss)
 		{
+			// Temporarily disable textures for text printing
+			AEGfxTextureSet(nullptr, 0, 0);
+			AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+
 			float camX = g_Character ? g_Character->GetWorldX() : 0.0f;
 			float camY = g_Character ? g_Character->GetWorldY() : 0.0f;
 			float textX = (room->rect.GetCenter().x - camX) * 2.0f / AEGfxGetWindowWidth();
@@ -684,10 +698,14 @@ void Level_Draw()
 			if (g_FontId >= 0 && textX > -0.9f && textX < 0.9f && textY > -0.9f && textY < 0.9f)
 				AEGfxPrint(g_FontId, (char*)"exit", textX, textY, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 		}
+
+		// Reset back to standard color rendering for the rest of the game loop
+		AEGfxTextureSet(nullptr, 0, 0);
+		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
 	}
 
 	// Draw Items
-// Draw Items (Now uses the official textured Draw function in Items.cpp!)
+	// Draw Items (Now uses the official textured Draw function in Items.cpp!)
 	g_ItemsManager.Draw();
 	for (auto& enemy : g_Enemies)
 	{
@@ -766,7 +784,7 @@ void Level_Draw()
 	// Draw inventory last so it appears on top
 	g_Inventory.Draw();
 
-	//draw lives
+	//draw lives and keys
 	if (g_FontId >= 0)
 	{
 		char livesText[16];
@@ -776,6 +794,16 @@ void Level_Draw()
 		// AEGfxPrint(fontId, string, x, y, scale, r, g, b, a)
 		// x = 0.7f (Right side), y = 0.9f (Top)
 		AEGfxPrint(g_FontId, livesText, 0.7f, 0.9f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f);
+
+		// --- NEW: DRAW KEYS ---
+		char keyText[32];
+		int collectedKeys = g_ItemsManager.GetCollectedKeyCount();
+		int totalKeys = g_ItemsManager.GetTotalKeyCount();
+		sprintf_s(keyText, "Keys: %d/%d", collectedKeys, totalKeys);
+
+		// Print slightly below the lives (y = 0.8f) in Yellow (R:1.0f, G:1.0f, B:0.0f)
+		AEGfxPrint(g_FontId, keyText, 0.7f, 0.8f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f);
+		// ----------------------
 	}
 
 	if (s_ShowLevelComplete)
@@ -886,6 +914,8 @@ void Level_Unload()
 {
 	if (g_pUnitSquare) { AEGfxMeshFree(g_pUnitSquare); g_pUnitSquare = nullptr; }
 	if (g_pRectOutline) { AEGfxMeshFree(g_pRectOutline); g_pRectOutline = nullptr; }
+
+	if (g_texWall) { AEGfxTextureUnload(g_texWall); g_texWall = nullptr; }
 
 	if (g_FontId >= 0) {
 		AEGfxDestroyFont(g_FontId);

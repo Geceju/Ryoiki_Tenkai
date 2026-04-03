@@ -71,6 +71,12 @@ public:
 	// Get total items count
 	int GetTotalCount() const;
 
+	// Get collected Keys count
+	int GetCollectedKeyCount() const;
+
+	// Get total keys count
+	int GetTotalKeyCount() const;
+
 	// Reset all items
 	void Reset();
 
