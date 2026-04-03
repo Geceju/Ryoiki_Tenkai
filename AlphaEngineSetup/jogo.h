@@ -78,6 +78,7 @@ private:
 	float worldY;
 	float moveSpeed;
 	float moveTimer;
+	float stepTimer; // Track audio timing
 	bool isMoving;
 
 	// Visual mesh

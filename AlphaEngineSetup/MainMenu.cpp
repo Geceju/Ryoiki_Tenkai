@@ -4,6 +4,7 @@
 #include "AEEngine.h"
 #include "AABBCollision.h"
 #include "Leaderboard.h"
+#include "AudioSystem.h"
 #include <iostream>
 #include <cmath>
 #include <cstdlib>
@@ -65,6 +66,9 @@ void MainMenu_Initialize() {
 
     SettingsMenu_Initialize();
     LeaderboardSystem::Load();
+
+    // Start the menu background music
+    AudioSystem::Play("MenuBGM");
 }
 
 void MainMenu_Update() {
@@ -83,16 +87,47 @@ void MainMenu_Update() {
 
     // If leaderboard is open, click anywhere to close it
     if (showLeaderboard) {
-        if (AEInputCheckTriggered(AEVK_LBUTTON) || AEInputCheckTriggered(AEVK_ESCAPE)) {
+        if (AEInputCheckTriggered(AEVK_LBUTTON) || AEInputCheckTriggered(AEVK_ESCAPE))
+        {
+            // Play a click sound effect
+            AudioSystem::Play("Click");
             showLeaderboard = false;
         }
         return; // Stop updating main menu buttons
     }
 
-    if (Collision_PointInButton(worldMX, worldMY, btnPlay.x, btnPlay.y, btnPlay.scaleX, btnPlay.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) gGameStateNext = GS_LEVEL1;
-    if (Collision_PointInButton(worldMX, worldMY, btnSettings.x, btnSettings.y, btnSettings.scaleX, btnSettings.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) showSettingsMenu = true;
-    if (Collision_PointInButton(worldMX, worldMY, btnLeaderboard.x, btnLeaderboard.y, btnLeaderboard.scaleX, btnLeaderboard.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) showLeaderboard = true;
-    if (Collision_PointInButton(worldMX, worldMY, btnExit.x, btnExit.y, btnExit.scaleX, btnExit.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) gGameStateNext = GS_QUIT;
+    if (Collision_PointInButton(worldMX, worldMY, btnPlay.x, btnPlay.y, btnPlay.scaleX, btnPlay.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+    {
+        // Stop the BGM group (true = music group)
+        AudioSystem::StopGroup(true);
+
+        // Play a click sound effect
+        AudioSystem::Play("Click");
+
+        gGameStateNext = GS_LEVEL1;
+    }
+    if (Collision_PointInButton(worldMX, worldMY, btnSettings.x, btnSettings.y, btnSettings.scaleX, btnSettings.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+    {
+        // Play a click sound effect
+        AudioSystem::Play("Click");
+
+        showSettingsMenu = true;
+    }
+    if (Collision_PointInButton(worldMX, worldMY, btnLeaderboard.x, btnLeaderboard.y, btnLeaderboard.scaleX, btnLeaderboard.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+    {
+        // Play a click sound effect
+        AudioSystem::Play("Click");
+
+        showLeaderboard = true;
+    }
+
+    if (Collision_PointInButton(worldMX, worldMY, btnExit.x, btnExit.y, btnExit.scaleX, btnExit.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+    {
+        // Play a click sound effect
+        AudioSystem::Play("Click");
+
+        gGameStateNext = GS_QUIT;
+    }
 
     // Background logic
     if (!bgIsRunning) {

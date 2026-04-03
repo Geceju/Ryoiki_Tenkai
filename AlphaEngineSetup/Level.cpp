@@ -284,29 +284,6 @@ void Level_Load()
 	g_pJumpscareTex = AEGfxTextureLoad("Assets/enemy.png");
 	// Load shared settings menu resources
 	SettingsMenu_Load();
-
-
-	// <----------------------------- SOUND LOADING ---------------------------------->
-
-	// Load audio assets
-	AudioSystem::Init();
-
-	// ADD SOUNDS BELOW USING AudioSystem::LoadSound
-	// Click on the function definition in AudioSystem.h for instructions on how to use it. It's very straightforward.
-	// !!! Take note: Whatever nickname you give the specific audio file, REMEMBER IT. !!!
-	// You can simply do AudioSystem::Play(nickname) to play the sound for future uses.
-
-	// BGMs
-	AudioSystem::LoadSound("bgm_main", "Assets/Audio/Music/main_theme.mp3", true);
-
-	// Player SFX
-	AudioSystem::LoadSound("sfx_jump", "Assets/Audio/SFX/Player/jump.wav", false);
-	AudioSystem::LoadSound("sfx_hurt", "Assets/Audio/SFX/Player/hit.wav" , false);
-
-	// Enemy SFX
-	
-
-	// <------------------------------------------------------------------------------->
 }
 
 void Level_Init()
@@ -521,6 +498,9 @@ void Level_Init()
 	s_ShowNameWarning = false;
 
 	SettingsMenu_Initialize();
+
+	// Start the dungeon music
+	AudioSystem::Play("LevelBGM");
 }
 
 void Level_Update()
@@ -730,7 +710,9 @@ void Level_Update()
 			float distToPlayer = dx * dx + dy * dy;
 
 			// Collision check with enemies
-			if (distToPlayer < 625 && !s_EnemyContact && !s_GodMode) {
+			if (distToPlayer < 625 && !s_EnemyContact && !s_GodMode)
+			{
+				AudioSystem::Play("Hit");
 				s_EnemyContact = true;
 				lives--;
 				g_Character->TriggerStun(g_Enemies);
@@ -1293,7 +1275,8 @@ void Level_Unload()
 	SettingsMenu_Unload();
 
 	// Release enemy textures and clear the list.
-	for (auto& enemy : g_Enemies) {
+	for (auto& enemy : g_Enemies)
+	{
 		enemy.Unload();
 	}
 	// Jumpscare free

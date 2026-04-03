@@ -1,4 +1,5 @@
 #include "Enemy.h"
+#include "AudioSystem.h"
 #include <math.h> // For sqrtf
 #include <queue>
 #include <algorithm>
@@ -39,6 +40,7 @@ void SimpleEnemy::Load()
 
 void SimpleEnemy::Unload()
 {
+    // Free the character sprite mesh
     if (pMesh)
     {
         AEGfxMeshFree(pMesh);
@@ -48,6 +50,12 @@ void SimpleEnemy::Unload()
     if (s_pEnemyTexture) {
         AEGfxTextureUnload(s_pEnemyTexture);
         s_pEnemyTexture = nullptr;
+    }
+
+    // Free the vision cone mesh
+    if (pVisionMesh) {
+        AEGfxMeshFree(pVisionMesh);
+        pVisionMesh = nullptr;
     }
 }
 
@@ -432,7 +440,6 @@ bool SimpleEnemy::IsPositionWalkable(float x, float y, const std::vector<std::un
 void SimpleEnemy::LoadVisionMesh() {
     if (pVisionMesh) return;
 
-    AEGfxMeshStart();
     int segments = 24; // Increased slightly for a smoother wide curve
 
     // WIDER: Changed from 45 degrees to 90 degrees
@@ -441,6 +448,7 @@ void SimpleEnemy::LoadVisionMesh() {
     // SHORTER: Hardcoded to 300 instead of the massive 500 detectionRange
     float visionDist = 300.0f;
 
+    AEGfxMeshStart();
     // The Tip of the cone (at enemy center)
     for (int i = 0; i < segments; ++i) {
         float a1 = -coneAngle / 2.0f + (i * coneAngle / segments);
@@ -455,6 +463,7 @@ void SimpleEnemy::LoadVisionMesh() {
 }
 
 void SimpleEnemy::DrawVisionOverlay() {
+    // Only draw if the mesh exists and the enemy is chasing
     if (!pVisionMesh || currentState != EnemyState::CHASE || stunTimer > 0.0f) return;
 
     // Update facing angle based on movement direction
@@ -463,18 +472,23 @@ void SimpleEnemy::DrawVisionOverlay() {
         facingAngle = atan2f(target.y - worldY, target.x - worldX);
     }
 
+    // Build the transformation matrix
     AEMtx33 scale, rot, trans, transform;
     AEMtx33Scale(&scale, 1.0f, 1.0f);
     AEMtx33Rot(&rot, facingAngle);
     AEMtx33Trans(&trans, worldX, worldY);
-    AEMtx33Concat(&transform, &trans, &rot);
+    
+    // Combine translation and rotation
+    AEMtx33Concat(&transform, &rot, &scale); // Scale then rotate
+    AEMtx33Concat(&transform, &trans, &transform); // Then translate
 
+    // Set render states
     AEGfxSetRenderMode(AE_GFX_RM_COLOR);
     AEGfxSetBlendMode(AE_GFX_BM_ADD);
-    AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
-    AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
-
+    
+    // Apply transform and draw the existing mesh
     AEGfxSetTransform(transform.m);
     AEGfxMeshDraw(pVisionMesh, AE_GFX_MDM_TRIANGLES);
+    
     AEGfxSetBlendMode(AE_GFX_BM_NONE);
 }

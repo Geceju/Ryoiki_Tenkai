@@ -1,6 +1,7 @@
 #include "jogo.h" 
 #include "Items.h"   
 #include "Enemy.h"
+#include "AudioSystem.h"
 #include <iostream>
 #include <cmath>       
 
@@ -12,6 +13,7 @@ Character::Character(int startX, int startY, float tile)
 	worldX = (static_cast<float>(gridX) * tileSize) + (tileSize * 0.5f);
 	worldY = (static_cast<float>(gridY) * tileSize) + (tileSize * 0.5f);
 	moveSpeed = 200.0f;
+	stepTimer = 0.0f;
 	isMoving = false;
 	// --- NEW ---
 	facingAngle = 0.0f;
@@ -134,6 +136,21 @@ void Character::Update(const std::vector<std::unique_ptr<Room>>& rooms)
 	{
 		isMoving = false;
 		moveTimer = 0.0f;
+	}
+
+	if (isMoving) {
+		// Increment timer by delta time
+		stepTimer += dt;
+
+		// Trigger a single "thud/step" sound every 0.35 seconds
+		if (stepTimer >= 0.35f) {
+			AudioSystem::Play("Footsteps");
+			stepTimer = 0.0f; // Reset the timer for the next step
+		}
+	}
+	else {
+		// Reset timer when standing still so the next step starts instantly when moving
+		stepTimer = 0.35f;
 	}
 }
 
