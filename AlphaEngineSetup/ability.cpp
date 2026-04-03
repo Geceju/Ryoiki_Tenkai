@@ -25,6 +25,8 @@ PlayerAbilities::PlayerAbilities()
     prevKey2(false),
     prevKey3(false),
     pathRefreshTimer(0.0f),
+    guideOrbDistFromItem(0.0f),
+    guidePathTotalLength(0.0f),
     pGuideMesh(nullptr)
 {
 }
@@ -61,15 +63,27 @@ void PlayerAbilities::CreateGuideMesh()
 {
     AEGfxMeshStart();
 
-    // A thin horizontal rectangle centered at origin.
-    // It will be scaled to the needed length and rotated toward the target item.
-    AEGfxTriAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f,
-        0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
-        -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+    // Create a 16-sided circle
+    const int segments = 16;
 
-    AEGfxTriAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
-        0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f,
-        -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+    for (int i = 0; i < segments; ++i)
+    {
+        float theta1 = 2.0f * PI * float(i) / float(segments);
+        float theta2 = 2.0f * PI * float(i + 1) / float(segments);
+
+        // Calculate outer points (radius of 0.5f keeps it the same base scale as before)
+        float x1 = 0.5f * std::cos(theta1);
+        float y1 = 0.5f * std::sin(theta1);
+        float x2 = 0.5f * std::cos(theta2);
+        float y2 = 0.5f * std::sin(theta2);
+
+        // Draw a triangle from the center to the edge
+        AEGfxTriAdd(
+            0.0f, 0.0f, 0xFFFFFFFF, 0.5f, 0.5f, // Center point
+            x1, y1, 0xFFFFFFFF, 0.0f, 0.0f,     // Edge point 1
+            x2, y2, 0xFFFFFFFF, 0.0f, 0.0f      // Edge point 2
+        );
+    }
 
     pGuideMesh = AEGfxMeshEnd();
 }
@@ -127,7 +141,7 @@ bool PlayerAbilities::FindNearestItem(const Character& player,
     return found;
 }
 
-// --- FIXED: world coordinates -> global tile grid ---
+// world coordinates -> global tile grid
 bool PlayerAbilities::WorldToTile(float worldX, float worldY,
     const std::vector<std::unique_ptr<Room>>& rooms,
     int& outTileX, int& outTileY) const
@@ -140,7 +154,7 @@ bool PlayerAbilities::WorldToTile(float worldX, float worldY,
     return true;
 }
 
-// --- FIXED: tile grid -> global world coordinates ---
+// tile grid -> global world coordinates
 AEVec2 PlayerAbilities::TileToWorld(int tileX, int tileY, float tileSize) const
 {
     AEVec2 result;
@@ -175,6 +189,7 @@ void PlayerAbilities::RebuildGuidePath(const Character& player,
     const std::vector<std::unique_ptr<Room>>& rooms)
 {
     guidePathPoints.clear();
+    guidePathTotalLength = 0.0f;
     if (rooms.empty()) return;
 
     float tileSize = rooms[0]->tileSize;
@@ -191,6 +206,7 @@ void PlayerAbilities::RebuildGuidePath(const Character& player,
         bool operator==(const TileNode& other) const {
             return x == other.x && y == other.y;
         }
+
     };
 
     // Pre-map active items by tile to quickly check if a tile has an item
@@ -220,7 +236,7 @@ void PlayerAbilities::RebuildGuidePath(const Character& player,
     bool found = false;
     TileNode goalNode = start;
 
-    // --- FIXED: BFS outward from player to find the TRUE shortest walking path ---
+    // BFS outward from player to find the TRUE shortest walking path
     while (!frontier.empty())
     {
         TileNode current = frontier.front();
@@ -278,7 +294,7 @@ void PlayerAbilities::RebuildGuidePath(const Character& player,
         rawPath.push_back(tileToItemPos[goalNode]);
     }
 
-    // --- NEW: Path Simplifier (Creates straight lines by removing jagged steps) ---
+    // Path Simplifier (Creates straight lines by removing jagged steps)
     if (rawPath.size() > 2) {
         guidePathPoints.push_back(rawPath[0]);
 
@@ -300,6 +316,14 @@ void PlayerAbilities::RebuildGuidePath(const Character& player,
     else {
         guidePathPoints = rawPath;
     }
+
+    // --- CALCULATE TOTAL LENGTH EVERY TIME WE REBUILD THE PATH ---
+    guidePathTotalLength = 0.0f;
+    for (size_t i = 0; i + 1 < guidePathPoints.size(); ++i) {
+        float dx = guidePathPoints[i + 1].x - guidePathPoints[i].x;
+        float dy = guidePathPoints[i + 1].y - guidePathPoints[i].y;
+        guidePathTotalLength += std::sqrt(dx * dx + dy * dy);
+    }
 }
 
 void PlayerAbilities::ActivateGuide(const Character& player,
@@ -309,6 +333,9 @@ void PlayerAbilities::ActivateGuide(const Character& player,
     guideTimer = 20.0f;
     pathRefreshTimer = 0.0f;
     RebuildGuidePath(player, items, rooms);
+
+    // Start the orb at the player's position (max distance from item)
+    guideOrbDistFromItem = guidePathTotalLength;
 }
 
 void PlayerAbilities::Update(float dt,
@@ -373,10 +400,23 @@ void PlayerAbilities::Update(float dt,
         guideTimer -= dt;
         pathRefreshTimer -= dt;
 
+        // Move the orb TOWARDS the item (decreasing the distance)
+        guideOrbDistFromItem -= 180.0f * dt;
+
+        // If the orb reaches the item, wait a moment (-150.0f), then respawn at player
+        if (guideOrbDistFromItem < -150.0f) {
+            guideOrbDistFromItem = guidePathTotalLength;
+        }
+
         if (pathRefreshTimer <= 0.0f)
         {
             pathRefreshTimer = 0.25f;
             RebuildGuidePath(player, items, rooms);
+
+            // Safety check: if the player walked backwards, don't let the orb spawn behind them
+            if (guideOrbDistFromItem > guidePathTotalLength) {
+                guideOrbDistFromItem = guidePathTotalLength;
+            }
         }
 
         if (guideTimer <= 0.0f)
@@ -389,41 +429,106 @@ void PlayerAbilities::Update(float dt,
 
 void PlayerAbilities::DrawGuide() const
 {
-    if (!pGuideMesh || guidePathPoints.size() < 2)
+    if (!pGuideMesh || guidePathPoints.size() < 2 || guidePathTotalLength <= 0.001f)
     {
         return;
     }
 
+    // We need segment lengths for interpolation
+    std::vector<float> segmentLengths;
     for (size_t i = 0; i + 1 < guidePathPoints.size(); ++i)
     {
-        const AEVec2& a = guidePathPoints[i];
-        const AEVec2& b = guidePathPoints[i + 1];
+        float dx = guidePathPoints[i + 1].x - guidePathPoints[i].x;
+        float dy = guidePathPoints[i + 1].y - guidePathPoints[i].y;
+        segmentLengths.push_back(std::sqrt(dx * dx + dy * dy));
+    }
 
-        float dx = b.x - a.x;
-        float dy = b.y - a.y;
-        float length = std::sqrt(dx * dx + dy * dy);
+    // Convert "distance from item" to "distance from player" for drawing
+    float currentDist = guidePathTotalLength - guideOrbDistFromItem;
 
-        if (length <= 0.001f)
+    // --- HELPER: Finds the exact X/Y coordinate at any given distance along the path ---
+    auto GetPosAtDistance = [&](float dist, AEVec2& outPos) -> bool {
+        if (dist < 0.0f || dist > guidePathTotalLength) return false;
+
+        float segmentStart = 0.0f;
+        for (size_t i = 0; i < segmentLengths.size(); ++i)
         {
-            continue;
+            float segLen = segmentLengths[i];
+            if (dist <= segmentStart + segLen)
+            {
+                float t = (dist - segmentStart) / segLen;
+                outPos.x = guidePathPoints[i].x + (guidePathPoints[i + 1].x - guidePathPoints[i].x) * t;
+                outPos.y = guidePathPoints[i].y + (guidePathPoints[i + 1].y - guidePathPoints[i].y) * t;
+                return true;
+            }
+            segmentStart += segLen;
         }
+        return false;
+        };
 
-        float angle = std::atan2(dy, dx);
-        float midX = (a.x + b.x) * 0.5f;
-        float midY = (a.y + b.y) * 0.5f;
+    // --- HELPER: Draws a YELLOW circle ---
+    AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+    auto DrawCircle = [&](float x, float y, float size, float alpha) {
+        AEMtx33 scale, trans, finalMtx;
+        AEMtx33Scale(&scale, size, size);
+        AEMtx33Trans(&trans, x, y);
+        AEMtx33Concat(&finalMtx, &trans, &scale);
 
-        AEMtx33 scale, rot, trans, temp, finalMtx;
-
-        AEMtx33Scale(&scale, length, 4.0f);
-        AEMtx33Rot(&rot, angle);
-        AEMtx33Trans(&trans, midX, midY);
-
-        AEMtx33Concat(&temp, &rot, &scale);
-        AEMtx33Concat(&finalMtx, &trans, &temp);
-
-        AEGfxSetRenderMode(AE_GFX_RM_COLOR);
-        AEGfxSetColorToMultiply(0.0f, 1.0f, 0.0f, 0.8f);
+        // 1.0f Red + 1.0f Green = Yellow
+        AEGfxSetColorToMultiply(1.0f, 1.0f, 0.0f, alpha);
         AEGfxSetTransform(finalMtx.m);
         AEGfxMeshDraw(pGuideMesh, AE_GFX_MDM_TRIANGLES);
+        };
+
+    // 1. Draw the fading trail FIRST (so it renders behind the main ball)
+    int trailCount = 10;
+    float trailSpacing = 8.0f; // Spaced out slightly more for the higher speed
+
+    for (int i = 1; i <= trailCount; ++i)
+    {
+        float trailDist = currentDist - (i * trailSpacing);
+        AEVec2 trailPos;
+
+        if (GetPosAtDistance(trailDist, trailPos))
+        {
+            float fadeFactor = 1.0f - ((float)i / trailCount);
+            float trailSize = 12.0f * fadeFactor;
+            float trailAlpha = fadeFactor * 0.5f;
+
+            DrawCircle(trailPos.x, trailPos.y, trailSize, trailAlpha);
+        }
+    }
+
+    // 2. Draw the Main glowing core and magical orbiting sparkles
+    AEVec2 centerPos;
+    if (GetPosAtDistance(currentDist, centerPos))
+    {
+        // The bright inner core and soft outer glow
+        DrawCircle(centerPos.x, centerPos.y, 12.0f, 1.0f);
+        DrawCircle(centerPos.x, centerPos.y, 22.0f, 0.3f);
+
+        // NEW: Draw a cluster of orbiting magical particles
+        int numSparkles = 6;
+        for (int i = 0; i < numSparkles; ++i)
+        {
+            // Use the moving distance as a continuous "time" variable to animate the particles
+            float timeVar = guideOrbDistFromItem * 0.05f;
+
+            // Alternate rotation direction: even index spins one way, odd index spins the other
+            float spinSpeed = (i % 2 == 0) ? 1.2f : -1.8f;
+            float angle = (timeVar * spinSpeed) + (i * (6.28318f / numSparkles));
+
+            // Make the orbit radius pulse in and out slightly
+            float orbitRadius = 14.0f + std::sin(timeVar * 0.5f + i) * 6.0f;
+
+            float px = centerPos.x + std::cos(angle) * orbitRadius;
+            float py = centerPos.y + std::sin(angle) * orbitRadius;
+
+            // Make the individual sparkles pulse in size
+            float sparkleSize = 4.0f + std::sin(timeVar + i) * 2.0f;
+
+            // Draw the sparkle!
+            DrawCircle(px, py, sparkleSize, 0.9f);
+        }
     }
 }

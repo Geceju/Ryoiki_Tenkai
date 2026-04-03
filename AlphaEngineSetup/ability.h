@@ -78,6 +78,9 @@ private:
     float pathRefreshTimer;
     std::vector<AEVec2> guidePathPoints;
 
+    float guideOrbDistFromItem;
+    float guidePathTotalLength;
+
     AEGfxVertexList* pGuideMesh;
 };
 
