@@ -4,6 +4,7 @@
 #include "MainMenu.h"
 #include "AEInput.h"
 #include "Credits.h"
+#include "Logo.h"
 
 // Tracking variables for the current and next game states
 GAME_STATE gGameStateCurr = GS_NONE;
@@ -61,6 +62,15 @@ void GSM_Update()
 		// Load New State
 		switch (gGameStateCurr)
 		{
+		case GS_LOGO:
+			GameStateLoad = Logo_Load;
+			GameStateInit = Logo_Init;
+			GameStateUpdate = Logo_Update;
+			GameStateDraw = Logo_Draw;
+			GameStateFree = Logo_Free;
+			GameStateUnload = Logo_Unload;
+			break;
+
 		case GS_CREDIT:
 			GameStateLoad = Credits_Load;
 			GameStateInit = Credits_Init;

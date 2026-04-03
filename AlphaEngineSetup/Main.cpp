@@ -27,7 +27,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         AESysSetWindowTitle("Dungeon Generator Test");
 
         // Start the game in the state you want
-        GSM_Initialize(GS_MAINMENU);
+        GSM_Initialize(GS_LOGO);
 
         // Continue the loop until the game state manager signals a quit
         while (gGameStateCurr != GS_QUIT)

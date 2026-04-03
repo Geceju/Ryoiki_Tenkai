@@ -15,6 +15,7 @@ typedef enum
     GS_LEVEL6,
     GS_NONE,
     GS_CREDIT,
+    GS_LOGO,
 } GAME_STATE;
 
 // Global trackers for the state machine to determine when to switch logic blocks
