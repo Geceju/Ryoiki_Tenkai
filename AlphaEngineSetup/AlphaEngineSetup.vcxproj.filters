@@ -73,6 +73,8 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Logo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="AudioSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -148,6 +150,8 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Logo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>    
     <ClInclude Include="AudioSystem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
