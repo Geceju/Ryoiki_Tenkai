@@ -12,8 +12,8 @@ static f32 elapsedtime;
 static s8 fontId = -1;
 
 void Logo_Load() {
-	pSquareMesh = CreateSquare();
-	pLogo = AEGfxTextureLoad("Assets/Assets/DigiPen_BLACK.png");
+	if(pSquareMesh == nullptr) pSquareMesh = CreateSquare();
+	pLogo = AEGfxTextureLoad("Assets/DigiPen_BLACK.png");
     fontId = AEGfxCreateFont("Assets/exo2-regular.ttf", 24);
 }
 
@@ -25,9 +25,9 @@ void Logo_Update() {
 	f32 dt = (f32)AEFrameRateControllerGetFrameTime();
 	elapsedtime += dt;
 
-	if (elapsedtime >= 5.0f) {
+	if (elapsedtime >= 5.0f || AEInputCheckTriggered(AEVK_LBUTTON)) {
 		elapsedtime = 0.0f;
-		gGameStateNext = GS_MAINMENU;
+		gGameStateNext = GS_MAINMENU;  
 	}
 }
 
@@ -74,4 +74,9 @@ void Logo_Unload() {
     AEGfxTextureUnload(pLogo);
     AEGfxDestroyFont(fontId);
     fontId = -1;
+
+    if (pSquareMesh) {
+        AEGfxMeshFree(pSquareMesh);
+        pSquareMesh = nullptr;
+    }
 }

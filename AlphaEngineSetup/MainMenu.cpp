@@ -105,6 +105,7 @@ void MainMenu_Update() {
     }
 
     if (!g_ShowQuitConfirm) {
+		// Play button
         if (Collision_PointInButton(worldMX, worldMY, btnPlay.x, btnPlay.y, btnPlay.scaleX, btnPlay.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
         {
             // Stop the BGM group (true = music group)
@@ -115,6 +116,8 @@ void MainMenu_Update() {
 
             gGameStateNext = GS_LEVEL1;
         }
+
+		// Open Settings Menu
         if (Collision_PointInButton(worldMX, worldMY, btnSettings.x, btnSettings.y, btnSettings.scaleX, btnSettings.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
         {
             // Play a click sound effect
@@ -122,6 +125,8 @@ void MainMenu_Update() {
 
             showSettingsMenu = true;
         }
+
+		// Open Leaderboard
         if (Collision_PointInButton(worldMX, worldMY, btnLeaderboard.x, btnLeaderboard.y, btnLeaderboard.scaleX, btnLeaderboard.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
         {
             // Play a click sound effect
@@ -130,6 +135,10 @@ void MainMenu_Update() {
             showLeaderboard = true;
         }
 
+		// Credit button
+        if (Collision_PointInButton(worldMX, worldMY, btnCredit.x, btnCredit.y, btnCredit.scaleX, btnCredit.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) gGameStateNext = GS_CREDIT;
+
+		// Exit button
         if (Collision_PointInButton(worldMX, worldMY, btnExit.x, btnExit.y, btnExit.scaleX, btnExit.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
         {
             // Play a click sound effect

@@ -63,8 +63,8 @@ static const std::vector<std::string> credits = {
 };
 
 void Credits_Load() {
-    pSquareMesh = CreateSquare();
-    pLogo = AEGfxTextureLoad("Assets/Assets/DigiPen_BLACK.png");
+    if(pSquareMesh == nullptr) pSquareMesh = CreateSquare();
+    pLogo = AEGfxTextureLoad("Assets/DigiPen_BLACK.png");
     fontId = AEGfxCreateFont("Assets/exo2-regular.ttf", 24);
     //bgm = AEAudioLoadMusic("Assets/Sounds/credits_bgm.mp3");
 }
@@ -175,4 +175,9 @@ void Credits_Unload() {
     AEGfxTextureUnload(pLogo);
     AEGfxDestroyFont(fontId);
     fontId = -1;
+
+    if (pSquareMesh) {
+        AEGfxMeshFree(pSquareMesh);
+        pSquareMesh = nullptr;
+    }
 }

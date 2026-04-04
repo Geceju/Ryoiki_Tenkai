@@ -242,42 +242,49 @@ static bool IsTileReachable(Room* room, int startX, int startY, int targetX, int
 
 void Level_Load()
 {
-	AEGfxMeshStart();
+	if (g_pUnitSquare == nullptr) {
+		AEGfxMeshStart();
 
-	// Triangle 1
-	AEGfxTriAdd(
-		-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f,
-		0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
-		-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+		// Triangle 1
+		AEGfxTriAdd(
+			-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f,
+			0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
+			-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
 
-	// Triangle 2
-	AEGfxTriAdd(
-		0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
-		0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f,
-		-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+		// Triangle 2
+		AEGfxTriAdd(
+			0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
+			0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f,
+			-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
 
-	g_pUnitSquare = AEGfxMeshEnd();
+		g_pUnitSquare = AEGfxMeshEnd();
+	}
 
-	AEGfxMeshStart();
-	AEGfxVertexAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f);
-	AEGfxVertexAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f);
-	AEGfxVertexAdd(0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f);
-	AEGfxVertexAdd(-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
-	AEGfxVertexAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f);
-	g_pRectOutline = AEGfxMeshEnd();
+	if (g_pRectOutline == nullptr) {
+		AEGfxMeshStart();
 
-	g_FontId = AEGfxCreateFont("Assets/exo2-regular.ttf", 20);
-	if (g_FontId < 0) g_FontId = AEGfxCreateFont("Assets\\exo2-regular.ttf", 20);
+		AEGfxVertexAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f);
+		AEGfxVertexAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f);
+		AEGfxVertexAdd(0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f);
+		AEGfxVertexAdd(-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+		AEGfxVertexAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f);
+
+		g_pRectOutline = AEGfxMeshEnd();
+	}
+	if (g_FontId < 0) {
+		g_FontId = AEGfxCreateFont("Assets/exo2-regular.ttf", 20);
+		if (g_FontId < 0) g_FontId = AEGfxCreateFont("Assets\\exo2-regular.ttf", 20);
+	}
 
 	// wall texture
-	g_texWall = AEGfxTextureLoad("Assets/Assets/stone-texture-background.jpg");
+	if (g_texWall == nullptr) g_texWall = AEGfxTextureLoad("Assets/stone-texture-background.jpg");
 	// --- LOAD TUTORIAL SPRITES ---
-	tut_EnokiTex = AEGfxTextureLoad("Assets/jogo.png");
-	tut_EnemyTex = AEGfxTextureLoad("Assets/enemy.png");
-	tut_BlueMushTex = AEGfxTextureLoad("Assets/bluemushroom.png"); // Check your filename!
-	tut_GreenMushTex = AEGfxTextureLoad("Assets/greenmushroom.png"); // Check your filename!
-	tut_RedMushTex = AEGfxTextureLoad("Assets/redmushroom.png"); // Check your filename!
-	tut_KeyTex = AEGfxTextureLoad("Assets/babycarrot.png");
+	if (tut_EnokiTex == nullptr) tut_EnokiTex = AEGfxTextureLoad("Assets/jogo.png");
+	if (tut_EnemyTex == nullptr) tut_EnemyTex = AEGfxTextureLoad("Assets/enemy.png");
+	if (tut_BlueMushTex == nullptr) tut_BlueMushTex = AEGfxTextureLoad("Assets/bluemushroom.png"); // Check your filename!
+	if (tut_GreenMushTex == nullptr) tut_GreenMushTex = AEGfxTextureLoad("Assets/greenmushroom.png"); // Check your filename!
+	if (tut_RedMushTex == nullptr) tut_RedMushTex = AEGfxTextureLoad("Assets/redmushroom.png"); // Check your filename!
+	if (tut_KeyTex == nullptr) tut_KeyTex = AEGfxTextureLoad("Assets/babycarrot.png");
 	TilesetManager::Load();
 
 	// Initialize items graphics (AFTER engine is ready)
@@ -792,12 +799,11 @@ void Level_Draw()
 
 		if (room->type == RoomType::Boss) AEGfxSetColorToMultiply(1.0f, 0.0f, 0.0f, 1.0f);
 		else if (!g_ShowColors) AEGfxSetColorToMultiply(0.5f, 0.5f, 0.5f, 1.0f);
-		else
+		else if (room->type == RoomType::Start)
 		{
-			if (room->type == RoomType::Start) AEGfxSetColorToMultiply(0.0f, 1.0f, 0.0f, 1.0f);
-			else AEGfxSetColorToMultiply(style.r, style.g, style.b, 1.0f);
+			AEGfxSetColorToMultiply(0.0f, 1.0f, 0.0f, 1.0f);
 		}
-		else if (room->type == RoomType::Boss) {
+		else if(room->type == RoomType::Boss) {
 			// Boss Room is always a unique color to identify it
 			AEGfxSetRenderMode(AE_GFX_RM_COLOR);
 			AEGfxSetColorToMultiply(0.8f, 0.0f, 0.0f, 1.0f); // Vibrant Red
