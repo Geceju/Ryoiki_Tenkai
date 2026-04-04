@@ -25,7 +25,7 @@ void LoadAllAssets() {
 	}
 
 	// Background Music
-	AudioSystem::LoadSound( "MenuBGM", "Assets/Sounds/ambience.wav", true);
+	AudioSystem::LoadSound( "MenuBGM", "Assets/Sounds/mainmenu.wav", true);
 	AudioSystem::LoadSound("LevelBGM", "Assets/Sounds/ambience.wav", true);
 
 	// SFX

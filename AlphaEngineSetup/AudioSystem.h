@@ -19,6 +19,8 @@ public:
     static void LoadSound(const std::string& name, const std::string& path, bool isBGM);
     // Triggers playback by nickname
     static void Play(const std::string& name);
+    // Overloaded play (allows for a specific volume multiplier)
+    static void Play(const std::string& name, float volumeMultiplier);
     // Suspends all active audio groups (Pause Menu)
     static void PauseAll();
     // Continues playback for all suspended audio groups

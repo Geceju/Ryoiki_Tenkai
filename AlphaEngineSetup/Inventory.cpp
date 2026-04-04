@@ -40,8 +40,6 @@ void Inventory::Load() {
 	if (!texInvBabyCarrot) texInvBabyCarrot = AEGfxTextureLoad("Assets/babycarrot.png");
 }
 
-
-
 void Inventory::Init() {
 	selectedSlot = 0;
 

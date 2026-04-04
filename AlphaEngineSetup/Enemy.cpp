@@ -157,7 +157,38 @@ void SimpleEnemy::Update(float playerX, float playerY, float dt, const std::vect
 
     case EnemyState::CHASE:
         chaseTimer -= dt;
+        if (stunTimer <= 0.0f) {
+            // 1. Calculate distance between Enemy and Player
+            float dx = playerX - worldX;
+            float dy = playerY - worldY;
+            float distance = sqrtf(dx * dx + dy * dy);
 
+            // 2. Define the "Hearing Range" (e.g., 600 units)
+            float maxRange = 600.0f;
+
+            if (distance < maxRange) {
+                // Heartbeat Timer (so it doesn't play every single frame)
+                static float heartbeatTimer = 0.0f;
+                heartbeatTimer += dt;
+
+                // Adjust 0.6f to change how fast the heart beats
+                if (heartbeatTimer >= 0.6f) {
+                    // Calculate Volume (Closer = Louder)
+                    // Linear inverse: 1.0 at distance 0, 0.0 at maxRange
+                    float volumePercent = 1.0f - (distance / maxRange);
+
+                    // Clamp it between 0 and 1 just in case
+                    if (volumePercent < 0.0f) volumePercent = 0.0f;
+                    if (volumePercent > 1.0f) volumePercent = 1.0f;
+
+                    // Play with the calculated volume
+                    // We use an override for the volume here
+                    AudioSystem::Play("Heartbeat", volumePercent);
+
+                    heartbeatTimer = 0.0f;
+                }
+            }
+        }
         // Give up if the timer ends
         if (chaseTimer <= 0.0f) {
             currentState = EnemyState::PATROL;

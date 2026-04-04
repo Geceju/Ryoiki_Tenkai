@@ -54,20 +54,25 @@ void AudioSystem::LoadSound(const std::string& name, const std::string& path, bo
 }
 
 void AudioSystem::Play(const std::string& name) {
+	// Calls the overloaded version with a multiplier of 1.0
+	Play(name, 1.0f);
+}
+
+// Overloaded version
+void AudioSystem::Play(const std::string& name, float volumeMultiplier) {
 	// Search the map for the nickname
 	auto it = soundMap.find(name);
 
 	if (it != soundMap.end()) {
 		SoundInstance& si = it->second;
 
-		if (si.isBGM) {
-			// Play on music group with loop forever (-1)
-			AEAudioPlay(si.audio, groupMusic, 1.0f, 1.0f, -1);
-		}
-		else {
-			// Play on SFX group to play once (0)
-			AEAudioPlay(si.audio, groupSFX, 1.0f, 1.0f, 0);
-		}
+		// Calculate the specific volume for this instance
+		float baseVolume = si.isBGM ? g_MusicVolume : g_SFXVolume;
+		float finalVolume = baseVolume * volumeMultiplier;
+
+		// Trigger the Alpha Engine sound
+		AEAudioPlay(si.audio, (si.isBGM ? groupMusic : groupSFX),
+			finalVolume, 1.0f, (si.isBGM ? -1 : 0));
 	}
 }
 

@@ -15,4 +15,9 @@ void SettingsMenu_Update(bool& isMenuOpen);
 void SettingsMenu_Draw(bool isIngame); // Pass true if in a level to draw the "Exit to Menu" button
 void SettingsMenu_Unload();
 
+// Confirmation logic
+void InitConfirmButtons();
+void ShowExitMenuConfirmation();
+void ShowExitGameConfirmation();
+
 #endif

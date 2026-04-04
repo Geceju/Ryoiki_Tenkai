@@ -1,6 +1,7 @@
 // items.cpp
 #include "items.h"
 #include "Inventory.h"
+#include "AudioSystem.h"
 #include <algorithm>
 #include <cstdlib>
 #include <ctime>
@@ -245,6 +246,9 @@ void ItemsManager::Update(float playerX, float playerY, float deltaTime) {
 					break;
 				case ItemType::KEY:
 					printf("KEY collected!\n");
+					if (g_Inventory.GetKeyCount() == 3) {
+						AudioSystem::Play("AllKeys");
+					}
 					break;
 				}
 

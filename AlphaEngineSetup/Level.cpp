@@ -284,6 +284,15 @@ void Level_Load()
 	g_pJumpscareTex = AEGfxTextureLoad("Assets/enemy.png");
 	// Load shared settings menu resources
 	SettingsMenu_Load();
+
+	// Reset all Debug and Tool flags to FALSE
+	s_ShowDebug = false; // The menu itself starts hidden
+	s_GodMode = false;
+	s_NoClip = false;
+	g_RevealNeighbors = true;
+	g_ShowWayfinder = false;
+	g_ShowColors = false;
+	g_ShowKeyLocation = false;
 }
 
 void Level_Init()
@@ -600,10 +609,11 @@ void Level_Update()
 
 	// Only allow these toggles if the Debug Menu is OPEN!
 	if (s_ShowDebug) {
-		if (AEInputCheckTriggered(AEVK_G)) s_GodMode = !s_GodMode;
+		if (AEInputCheckTriggered(AEVK_G)) { s_GodMode = !s_GodMode; printf("Godmode: %s\n", s_GodMode ? "ON" : "OFF"); }
 		if (AEInputCheckTriggered(AEVK_V)) {
 			s_NoClip = !s_NoClip;
 			if (g_Character) g_Character->isNoClip = s_NoClip; // Tell the player to ignore walls!
+			printf("Noclip: %s\n", s_NoClip ? "ON" : "OFF");
 		}
 
 		// Map & Visual Debuggers
@@ -904,31 +914,56 @@ void Level_Draw()
 	// Wayfinder to key location
 	if (g_ShowKeyLocation && g_Character)
 	{
-		for (const auto& item : g_ItemsManager.GetItems())
+		float pX = g_Character->GetWorldX();
+		float pY = g_Character->GetWorldY();
+
+		Item* closestKey = nullptr;
+
+		// Initialize with a massive number so keys at ANY distance are valid
+		float minDistanceSq = 1e12f;
+
+		// Scan EVERY item in the manager
+		for (auto& item : g_ItemsManager.GetItems())
 		{
-			// Using 'item.collected', 'item.x', and 'item.y' based on Items.cpp
-			// Change them to isCollected/worldX if you recently renamed them.
+			// Must be a KEY and must NOT be collected yet
 			if (item.type == ItemType::KEY && !item.collected)
 			{
-				// Draw a blue line straight from the player to the key
-				DrawLineSegment(
-					g_Character->GetWorldX(), g_Character->GetWorldY(),
-					item.x, item.y,
-					5.0f, 1.0f, 0.0f, 1.0f, 0.7f // 5px thick, Purple, 70% opacity
-				);
+				float dx = item.x - pX;
+				float dy = item.y - pY;
 
-				// Draw a massive yellow highlight box around the key itself
-				AEMtx33 scale, trans, transform;
-				AEMtx33Scale(&scale, 120.0f, 120.0f); // Make it big enough to easily spot
-				AEMtx33Trans(&trans, item.x, item.y);
-				AEMtx33Concat(&transform, &trans, &scale);
+				// Squared distance check
+				float distSq = (dx * dx) + (dy * dy);
 
-				AEGfxSetRenderMode(AE_GFX_RM_COLOR);
-				AEGfxSetColorToMultiply(1.0f, 1.0f, 0.0f, 1.0f); // Solid Yellow
-				AEGfxSetTransform(transform.m);
-				AEGfxMeshDraw(g_pRectOutline, AE_GFX_MDM_LINES_STRIP); // Use your hollow rect mesh
+				if (distSq < minDistanceSq)
+				{
+					minDistanceSq = distSq;
+					closestKey = const_cast<Item*>(&item);
+				}
+			}
+		}
 
-				break; // We found the key, no need to keep checking items
+		// After checking the WHOLE map, if a key exists, draw it
+		if (closestKey)
+		{
+			// This line will now stretch across the entire map if needed
+			DrawLineSegment(
+				pX, pY,
+				closestKey->x, closestKey->y,
+				5.0f, 1.0f, 0.0f, 1.0f, 0.7f // Purple
+			);
+
+			// Draw the highlight box at the key's world coordinates
+			AEMtx33 scale, trans, transform;
+			AEMtx33Scale(&scale, 120.0f, 120.0f);
+			AEMtx33Trans(&trans, closestKey->x, closestKey->y);
+			AEMtx33Concat(&transform, &trans, &scale);
+
+			AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+			AEGfxSetColorToMultiply(1.0f, 1.0f, 0.0f, 1.0f); // Yellow
+			AEGfxSetTransform(transform.m);
+
+			if (g_pRectOutline) {
+				AEGfxMeshDraw(g_pRectOutline, AE_GFX_MDM_LINES_STRIP);
 			}
 		}
 	}
@@ -1273,6 +1308,9 @@ void Level_Unload()
 
 	// Unload settings menu resources.
 	SettingsMenu_Unload();
+
+	// Stop all active sound effects (heartbeat, footsteps, etc.)
+	AudioSystem::StopGroup(false);
 
 	// Release enemy textures and clear the list.
 	for (auto& enemy : g_Enemies)

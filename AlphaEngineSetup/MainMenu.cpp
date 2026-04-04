@@ -24,6 +24,9 @@ static AEGfxTexture* pBgEnemyTexture = nullptr;
 static bool showSettingsMenu = false;
 static bool showLeaderboard = false;
 
+static bool g_ShowQuitConfirm = false;
+static Button btnQuitYes, btnQuitNo;
+
 // Background animation
 static bool bgIsRunning = false;
 static float bgTimer = 0.0f;
@@ -58,9 +61,13 @@ void MainMenu_Initialize() {
     btnLeaderboard = { 0.0f, -60.0f, 200.0f, 60.0f, bR, bG, bB };
     btnExit = { 0.0f, -140.0f, 200.0f, 60.0f, bR, bG, bB };
 
+    btnQuitYes = { -75.0f, -100.0f, 100.0f, 40.0f, 0.0f, 1.0f, 0.0f };
+    btnQuitNo = { 75.0f, -100.0f, 100.0f, 40.0f, 1.0f, 0.0f, 0.0f };
+
     showSettingsMenu = false;
     showLeaderboard = false;
     bgIsRunning = false;
+    g_ShowQuitConfirm = false;
     bgTimer = 0.0f;
     g_TotalTime = 0.0f;
 
@@ -96,38 +103,52 @@ void MainMenu_Update() {
         return; // Stop updating main menu buttons
     }
 
-    if (Collision_PointInButton(worldMX, worldMY, btnPlay.x, btnPlay.y, btnPlay.scaleX, btnPlay.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
-    {
-        // Stop the BGM group (true = music group)
-        AudioSystem::StopGroup(true);
+    if (!g_ShowQuitConfirm) {
+        if (Collision_PointInButton(worldMX, worldMY, btnPlay.x, btnPlay.y, btnPlay.scaleX, btnPlay.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+        {
+            // Stop the BGM group (true = music group)
+            AudioSystem::StopGroup(true);
 
-        // Play a click sound effect
-        AudioSystem::Play("Click");
+            // Play a click sound effect
+            AudioSystem::Play("Click");
 
-        gGameStateNext = GS_LEVEL1;
+            gGameStateNext = GS_LEVEL1;
+        }
+        if (Collision_PointInButton(worldMX, worldMY, btnSettings.x, btnSettings.y, btnSettings.scaleX, btnSettings.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+        {
+            // Play a click sound effect
+            AudioSystem::Play("Click");
+
+            showSettingsMenu = true;
+        }
+        if (Collision_PointInButton(worldMX, worldMY, btnLeaderboard.x, btnLeaderboard.y, btnLeaderboard.scaleX, btnLeaderboard.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+        {
+            // Play a click sound effect
+            AudioSystem::Play("Click");
+
+            showLeaderboard = true;
+        }
+
+        if (Collision_PointInButton(worldMX, worldMY, btnExit.x, btnExit.y, btnExit.scaleX, btnExit.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+        {
+            // Play a click sound effect
+            AudioSystem::Play("Click");
+            g_ShowQuitConfirm = true;
+        }
     }
-    if (Collision_PointInButton(worldMX, worldMY, btnSettings.x, btnSettings.y, btnSettings.scaleX, btnSettings.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
-    {
-        // Play a click sound effect
-        AudioSystem::Play("Click");
-
-        showSettingsMenu = true;
-    }
-    if (Collision_PointInButton(worldMX, worldMY, btnLeaderboard.x, btnLeaderboard.y, btnLeaderboard.scaleX, btnLeaderboard.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
-    {
-        // Play a click sound effect
-        AudioSystem::Play("Click");
-
-        showLeaderboard = true;
-    }
-
-    if (Collision_PointInButton(worldMX, worldMY, btnExit.x, btnExit.y, btnExit.scaleX, btnExit.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
-    {
-        // Play a click sound effect
-        AudioSystem::Play("Click");
-
-        gGameStateNext = GS_QUIT;
-    }
+    else {
+        // Quit confirmation buttons
+        if (Collision_PointInButton(worldMX, worldMY, btnQuitYes.x, btnQuitYes.y, btnQuitYes.scaleX, btnQuitYes.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+        {
+            AudioSystem::Play("Click");
+            gGameStateNext = GS_QUIT;
+        }
+        if (Collision_PointInButton(worldMX, worldMY, btnQuitNo.x, btnQuitNo.y, btnQuitNo.scaleX, btnQuitNo.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+        {
+            AudioSystem::Play("Click");
+            g_ShowQuitConfirm = false;
+        }
+	}
 
     // Background logic
     if (!bgIsRunning) {
@@ -299,6 +320,41 @@ void MainMenu_Draw() {
                 AEGfxPrint(g_FontIdMenu, timeBuf, 0.15f, rowY, 0.85f, r, g, b, 1.0f);
             }
         }
+    }
+
+    if (g_ShowQuitConfirm) {
+        // Draw dark background panel
+        AEMtx33 scale, trans, transform;
+        AEMtx33Scale(&scale, 800.0f, 600.0f);
+        AEMtx33Trans(&trans, 0, 0);
+        AEMtx33Concat(&transform, &trans, &scale);
+
+        AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+        AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 0.9f); // 90% opacity black
+        AEGfxSetTransform(transform.m);
+        AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
+        AEGfxSetBlendMode(AE_GFX_BM_NONE);
+
+        // Draw Confirmation Text
+        AEGfxPrint(g_FontIdMenu, (char*)"Are you sure you want to quit?", -0.2f, 0.1f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+
+        // Draw YES Button
+        AEMtx33Scale(&scale, btnQuitYes.scaleX, btnQuitYes.scaleY);
+        AEMtx33Trans(&trans, btnQuitYes.x, btnQuitYes.y);
+        AEMtx33Concat(&transform, &trans, &scale);
+        AEGfxSetColorToMultiply(btnQuitYes.r, btnQuitYes.g, btnQuitYes.b, 1.0f);
+        AEGfxSetTransform(transform.m);
+        AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
+        AEGfxPrint(g_FontIdMenu, (char*)"YES", -0.118f, -0.24f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+
+        // Draw NO Button
+        AEMtx33Scale(&scale, btnQuitNo.scaleX, btnQuitNo.scaleY);
+        AEMtx33Trans(&trans, btnQuitNo.x, btnQuitNo.y);
+        AEMtx33Concat(&transform, &trans, &scale);
+        AEGfxSetColorToMultiply(btnQuitNo.r, btnQuitNo.g, btnQuitNo.b, 1.0f);
+        AEGfxSetTransform(transform.m);
+        AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
+        AEGfxPrint(g_FontIdMenu, (char*)"NO", 0.075f, -0.24f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
     }
 }
 
