@@ -2,7 +2,8 @@
 #include "jogo.h"
 #include "Enemy.h"
 #include "Items.h"
-#include "Inventory.h" 
+#include "Inventory.h"
+#include "AudioSystem.h"
 #include <cmath>
 #include <queue>
 #include <map>
@@ -353,6 +354,7 @@ void PlayerAbilities::Update(float dt,
         // Require POWER_UP item to use Speed Boost
         if (g_Inventory.ConsumeItem(ItemType::POWER_UP))
         {
+            AudioSystem::Play("Speed");
             ActivateSpeedBoost(player);
         }
     }
@@ -362,6 +364,7 @@ void PlayerAbilities::Update(float dt,
         // Require SLOW_ENEMY item to use Stun
         if (g_Inventory.ConsumeItem(ItemType::SLOW_ENEMY))
         {
+            AudioSystem::Play("Stun");
             ActivateStun(enemy);
         }
     }
@@ -371,6 +374,7 @@ void PlayerAbilities::Update(float dt,
         // Require POINT item to use Guide Path
         if (g_Inventory.ConsumeItem(ItemType::POINT))
         {
+            AudioSystem::Play("Path");
             ActivateGuide(player, items, rooms);
         }
     }

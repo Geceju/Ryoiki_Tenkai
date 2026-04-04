@@ -4,6 +4,7 @@
 #include "AEEngine.h"
 #include "AABBCollision.h"
 #include "Leaderboard.h"
+#include "AudioSystem.h"
 #include <iostream>
 #include <cmath>
 #include <cstdlib>
@@ -23,6 +24,9 @@ static AEGfxTexture* pBgEnemyTexture = nullptr;
 static bool showSettingsMenu = false;
 static bool showLeaderboard = false;
 
+static bool g_ShowQuitConfirm = false;
+static Button btnQuitYes, btnQuitNo;
+
 // Background animation
 static bool bgIsRunning = false;
 static float bgTimer = 0.0f;
@@ -38,8 +42,8 @@ void MainMenu_Load() {
 
     g_FontIdMenu = AEGfxCreateFont("Assets/exo2-regular.ttf", 24);
     g_FontIdTitle = AEGfxCreateFont("Assets/exo2-regular.ttf", 96);
-    pBgPlayerTexture = AEGfxTextureLoad("Assets/Assets/jogo.png");
-    pBgEnemyTexture = AEGfxTextureLoad("Assets/Assets/enemy.png");
+    pBgPlayerTexture = AEGfxTextureLoad("Assets/jogo.png");
+    pBgEnemyTexture = AEGfxTextureLoad("Assets/enemy.png");
 
     SettingsMenu_Load();
 }
@@ -58,14 +62,21 @@ void MainMenu_Initialize() {
     btnCredit = { 0.0f, -140.0f, 200.0f, 60.0f, bR, bG, bB };
     btnExit = { 0.0f, -220.0f, 200.0f, 60.0f, bR, bG, bB };
 
+    btnQuitYes = { -75.0f, -100.0f, 100.0f, 40.0f, 0.0f, 1.0f, 0.0f };
+    btnQuitNo = { 75.0f, -100.0f, 100.0f, 40.0f, 1.0f, 0.0f, 0.0f };
+
     showSettingsMenu = false;
     showLeaderboard = false;
     bgIsRunning = false;
+    g_ShowQuitConfirm = false;
     bgTimer = 0.0f;
     g_TotalTime = 0.0f;
 
     SettingsMenu_Initialize();
     LeaderboardSystem::Load();
+
+    // Start the menu background music
+    AudioSystem::Play("MenuBGM");
 }
 
 void MainMenu_Update() {
@@ -84,17 +95,61 @@ void MainMenu_Update() {
 
     // If leaderboard is open, click anywhere to close it
     if (showLeaderboard) {
-        if (AEInputCheckTriggered(AEVK_LBUTTON) || AEInputCheckTriggered(AEVK_ESCAPE)) {
+        if (AEInputCheckTriggered(AEVK_LBUTTON) || AEInputCheckTriggered(AEVK_ESCAPE))
+        {
+            // Play a click sound effect
+            AudioSystem::Play("Click");
             showLeaderboard = false;
         }
         return; // Stop updating main menu buttons
     }
 
-    if (Collision_PointInButton(worldMX, worldMY, btnPlay.x, btnPlay.y, btnPlay.scaleX, btnPlay.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) gGameStateNext = GS_LEVEL1;
-    if (Collision_PointInButton(worldMX, worldMY, btnSettings.x, btnSettings.y, btnSettings.scaleX, btnSettings.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) showSettingsMenu = true;
-    if (Collision_PointInButton(worldMX, worldMY, btnLeaderboard.x, btnLeaderboard.y, btnLeaderboard.scaleX, btnLeaderboard.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) showLeaderboard = true;
-    if (Collision_PointInButton(worldMX, worldMY, btnCredit.x, btnCredit.y, btnCredit.scaleX, btnCredit.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) gGameStateNext = GS_CREDIT;
-    if (Collision_PointInButton(worldMX, worldMY, btnExit.x, btnExit.y, btnExit.scaleX, btnExit.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) gGameStateNext = GS_QUIT;
+    if (!g_ShowQuitConfirm) {
+        if (Collision_PointInButton(worldMX, worldMY, btnPlay.x, btnPlay.y, btnPlay.scaleX, btnPlay.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+        {
+            // Stop the BGM group (true = music group)
+            AudioSystem::StopGroup(true);
+
+            // Play a click sound effect
+            AudioSystem::Play("Click");
+
+            gGameStateNext = GS_LEVEL1;
+        }
+        if (Collision_PointInButton(worldMX, worldMY, btnSettings.x, btnSettings.y, btnSettings.scaleX, btnSettings.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+        {
+            // Play a click sound effect
+            AudioSystem::Play("Click");
+
+            showSettingsMenu = true;
+        }
+        if (Collision_PointInButton(worldMX, worldMY, btnLeaderboard.x, btnLeaderboard.y, btnLeaderboard.scaleX, btnLeaderboard.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+        {
+            // Play a click sound effect
+            AudioSystem::Play("Click");
+
+            showLeaderboard = true;
+        }
+
+        if (Collision_PointInButton(worldMX, worldMY, btnExit.x, btnExit.y, btnExit.scaleX, btnExit.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+        {
+            // Play a click sound effect
+            AudioSystem::Play("Click");
+            g_ShowQuitConfirm = true;
+        }
+    }
+    else {
+        // Quit confirmation buttons
+        if (Collision_PointInButton(worldMX, worldMY, btnQuitYes.x, btnQuitYes.y, btnQuitYes.scaleX, btnQuitYes.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+        {
+            AudioSystem::Play("Click");
+            gGameStateNext = GS_QUIT;
+        }
+        if (Collision_PointInButton(worldMX, worldMY, btnQuitNo.x, btnQuitNo.y, btnQuitNo.scaleX, btnQuitNo.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+        {
+            AudioSystem::Play("Click");
+            g_ShowQuitConfirm = false;
+        }
+	}
 
     // Background logic
     if (!bgIsRunning) {
@@ -128,73 +183,53 @@ void MainMenu_Draw() {
     if (bgIsRunning) {
         float bP = fabsf(sinf(g_TotalTime * 15.0f)) * 10.0f;
         float bE = fabsf(sinf(g_TotalTime * 15.0f - 1.0f)) * 10.0f;
-        AEMtx33Rot(&r, atan2f(bgDirY, bgDirX));
-        AEMtx33Scale(&s, 70, 70);
+
+        // 1. Calculate horizontal flip: 1.0 is right, -1.0 is left
+        float flipX = (bgDirX >= 0) ? 1.0f : -1.0f;
+
+        // 2. Fix the Rotation: Keep it 0.0f so they stay right-side up
+        AEMtx33Rot(&r, 0.0f);
 
         // --- Fleeing Player ---
+        // Apply flipX to the Scale matrix
+        AEMtx33Scale(&s, 70.0f * flipX, 70.0f);
         AEMtx33Trans(&t, bgPlayerX, bgPlayerY + bP);
-        AEMtx33Concat(&final, &t, &r); AEMtx33Concat(&final, &final, &s);
+        AEMtx33Concat(&final, &t, &r);
+        AEMtx33Concat(&final, &final, &s);
 
         if (pBgPlayerTexture != nullptr) {
-            // SUCCESS! Set up the exact render state from the demo:
             AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
             AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
             AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
-
             AEGfxSetBlendMode(AE_GFX_BM_BLEND);
             AEGfxSetTransparency(1.0f);
-
-            // Use integers 0, 0 instead of floats
-            AEGfxTextureSet(pBgPlayerTexture, 0, 0);
-        }
-        else {
-            // FAILED! Draw Magenta.
-            AEGfxSetRenderMode(AE_GFX_RM_COLOR);
-            AEGfxSetColorToMultiply(1.0f, 0.0f, 1.0f, 1.0f);
-            AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
-            AEGfxSetBlendMode(AE_GFX_BM_NONE);
-            AEGfxTextureSet(nullptr, 0, 0);
+            AEGfxTextureSet(pBgPlayerTexture, 0.0f, 0.0f);
         }
 
         AEGfxSetTransform(final.m);
         AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
 
-        // Pursuing Enemy
+        // --- Pursuing Enemy ---
+        // Re-apply scale with flipX for the enemy
+        AEMtx33Scale(&s, 70.0f * flipX, 70.0f);
         AEMtx33Trans(&t, bgEnemyX, bgEnemyY + bE);
-        AEMtx33Concat(&final, &t, &r); AEMtx33Concat(&final, &final, &s);
+        AEMtx33Concat(&final, &t, &r);
+        AEMtx33Concat(&final, &final, &s);
 
         if (pBgEnemyTexture != nullptr) {
-            // SUCCESS! Set up the texture state
             AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
-
-            // Set to pure white to display original image
             AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
-            AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
-
             AEGfxSetBlendMode(AE_GFX_BM_BLEND);
-            AEGfxSetTransparency(1.0f);
-            AEGfxTextureSet(pBgEnemyTexture, 0, 0);
-        }
-        else {
-            // FAILED! Draw a solid red square as a fallback
-            AEGfxSetRenderMode(AE_GFX_RM_COLOR);
-            AEGfxSetColorToMultiply(1.0f, 0.0f, 0.0f, 1.0f);
-            AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
-            AEGfxSetBlendMode(AE_GFX_BM_NONE);
-            AEGfxTextureSet(nullptr, 0, 0);
+            AEGfxTextureSet(pBgEnemyTexture, 0.0f, 0.0f);
         }
 
         AEGfxSetTransform(final.m);
         AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
 
-        // 2. THEN RESET back to normal colors for the rest of the Menu UI
+        // Reset state
         AEGfxTextureSet(nullptr, 0, 0);
         AEGfxSetRenderMode(AE_GFX_RM_COLOR);
         AEGfxSetBlendMode(AE_GFX_BM_NONE);
-
-        //AEGfxSetColorToMultiply(1, 0, 0, 1);
-        //AEGfxSetTransform(final.m);
-        //AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
     }
 
     float winHalfH = (float)AEGfxGetWindowHeight() / 2.0f;
@@ -267,24 +302,61 @@ void MainMenu_Draw() {
                 float g = (i < 3) ? 1.0f : 1.0f;
                 float b = (i < 3) ? 0.0f : 1.0f;
 
-                float rowY = 0.05f - (i * 0.08f); // Starting lower so headers fit
+                // FIX: Shrunk the vertical gap from 0.08f to 0.06f so all 10 fit!
+                float rowY = 0.05f - (i * 0.06f);
 
-                // 1. Draw Rank (Fixed at X: -0.35)
+                // FIX: Dropped the text scale from 1.0f to 0.85f so they don't overlap vertically
+                // 1. Draw Rank 
                 char rankBuf[16];
                 sprintf_s(rankBuf, "%d.", (int)i + 1);
-                AEGfxPrint(g_FontIdMenu, rankBuf, -0.35f, rowY, 1.0f, r, g, b, 1.0f);
+                AEGfxPrint(g_FontIdMenu, rankBuf, -0.35f, rowY, 0.85f, r, g, b, 1.0f);
 
-                // 2. Draw Username (Fixed at X: -0.15)
+                // 2. Draw Username 
                 char nameBuf[16];
                 sprintf_s(nameBuf, "%s", runs[i].playerName.c_str());
-                AEGfxPrint(g_FontIdMenu, nameBuf, -0.15f, rowY, 1.0f, r, g, b, 1.0f);
+                AEGfxPrint(g_FontIdMenu, nameBuf, -0.15f, rowY, 0.85f, r, g, b, 1.0f);
 
-                // 3. Draw Time & Level (Fixed at X: 0.15)
+                // 3. Draw Time & Level 
                 char timeBuf[32];
                 sprintf_s(timeBuf, "Lvl %d  |  %02d:%05.2f", runs[i].levelReached, minutes, seconds);
-                AEGfxPrint(g_FontIdMenu, timeBuf, 0.15f, rowY, 1.0f, r, g, b, 1.0f);
+                AEGfxPrint(g_FontIdMenu, timeBuf, 0.15f, rowY, 0.85f, r, g, b, 1.0f);
             }
         }
+    }
+
+    if (g_ShowQuitConfirm) {
+        // Draw dark background panel
+        AEMtx33 scale, trans, transform;
+        AEMtx33Scale(&scale, 800.0f, 600.0f);
+        AEMtx33Trans(&trans, 0, 0);
+        AEMtx33Concat(&transform, &trans, &scale);
+
+        AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+        AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 0.9f); // 90% opacity black
+        AEGfxSetTransform(transform.m);
+        AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
+        AEGfxSetBlendMode(AE_GFX_BM_NONE);
+
+        // Draw Confirmation Text
+        AEGfxPrint(g_FontIdMenu, (char*)"Are you sure you want to quit?", -0.2f, 0.1f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+
+        // Draw YES Button
+        AEMtx33Scale(&scale, btnQuitYes.scaleX, btnQuitYes.scaleY);
+        AEMtx33Trans(&trans, btnQuitYes.x, btnQuitYes.y);
+        AEMtx33Concat(&transform, &trans, &scale);
+        AEGfxSetColorToMultiply(btnQuitYes.r, btnQuitYes.g, btnQuitYes.b, 1.0f);
+        AEGfxSetTransform(transform.m);
+        AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
+        AEGfxPrint(g_FontIdMenu, (char*)"YES", -0.118f, -0.24f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+
+        // Draw NO Button
+        AEMtx33Scale(&scale, btnQuitNo.scaleX, btnQuitNo.scaleY);
+        AEMtx33Trans(&trans, btnQuitNo.x, btnQuitNo.y);
+        AEMtx33Concat(&transform, &trans, &scale);
+        AEGfxSetColorToMultiply(btnQuitNo.r, btnQuitNo.g, btnQuitNo.b, 1.0f);
+        AEGfxSetTransform(transform.m);
+        AEGfxMeshDraw(pMeshButton, AE_GFX_MDM_TRIANGLES);
+        AEGfxPrint(g_FontIdMenu, (char*)"NO", 0.075f, -0.24f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
     }
 }
 

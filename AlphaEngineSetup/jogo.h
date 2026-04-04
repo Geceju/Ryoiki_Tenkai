@@ -61,6 +61,8 @@ public:
 	void LoadVisionMesh();             // Generates the shadow geometry
 	void DrawVisionOverlay();          // Renders the shadow over the world
 
+	bool isNoClip = false;
+
 private:
 	// Checks specific tile value at coordinates
 	// Return true only if the tile is 0 meaning Floor
@@ -76,6 +78,7 @@ private:
 	float worldY;
 	float moveSpeed;
 	float moveTimer;
+	float stepTimer; // Track audio timing
 	bool isMoving;
 
 	// Visual mesh

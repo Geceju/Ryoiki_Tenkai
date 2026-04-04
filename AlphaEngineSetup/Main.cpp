@@ -2,6 +2,8 @@
 #include <crtdbg.h> 
 #include "Utils.h"
 #include "GameStateManager.h"
+#include "AssetLoader.h"
+#include "AudioSystem.h"
 
 // The entry point for the Windows application
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -14,7 +16,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     // Replace 344 with the actual number from your VS Output window
     // !!!!!!!!!!!!!!!!!!!! Uncommment this line to find memory leaks or code errors !!!!!!!!!!!!!!!!!!!!
-    /*_CrtSetBreakAlloc(3583);*/ 
+    //_CrtSetBreakAlloc(6438); 
 
     // Tell the compiler to ignore these variables to avoid unused parameter warnings
     UNREFERENCED_PARAMETER(hPrevInstance);
@@ -25,6 +27,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
         // Set the window title for the application
         AESysSetWindowTitle("Dungeon Generator Test");
+
+        // Call the central loading function
+        LoadAllAssets();
 
         // Start the game in the state you want
         GSM_Initialize(GS_LOGO);
@@ -41,6 +46,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             // Finish the frame by swapping the buffers and displaying the image
             AESysFrameEnd();
         }
+
+        AudioSystem::Exit();
 
         // Manually unload the current level data before the app closes
         GSM_Unload();

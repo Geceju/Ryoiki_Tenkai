@@ -14,6 +14,8 @@
     <ClCompile Include="AABBCollision.cpp" />
     <ClCompile Include="ability.cpp" />
     <ClCompile Include="Credits.cpp" />
+    <ClCompile Include="AssetLoader.cpp" />
+    <ClCompile Include="AudioSystem.cpp" />
     <ClCompile Include="Enemy.cpp" />
     <ClCompile Include="GameStateManager.cpp" />
     <ClCompile Include="Inventory.cpp" />
@@ -36,6 +38,8 @@
     <ClInclude Include="AABBCollision.h" />
     <ClInclude Include="ability.h" />
     <ClInclude Include="Credits.h" />
+    <ClInclude Include="AssetLoader.h" />
+    <ClInclude Include="AudioSystem.h" />
     <ClInclude Include="Enemy.h" />
     <ClInclude Include="GameStateManager.h" />
     <ClInclude Include="Inventory.h" />

@@ -1,47 +1,61 @@
-#pragma once
-#ifndef TILESETS_H
-#define TILESETS_H
+#ifndef TILESET_H
+#define TILESET_H
 
 #include "AEEngine.h"
 #include <vector>
 
-// The menu of styles (Numeric/Generic)
+/**
+ * @brief Enumeration for different tileset types.
+ */
 enum class TilesetType {
-    Type_01,      // Grey (Standard)
-    Type_02,      // Red
-    Type_03,      // Blue
-    Type_04,      // Green
-    COUNT         // Helper to count how many we have
+	Type_01,
+	Type_02,
+	Type_03,
+	Type_04,
+	Type_05,
+	Count
 };
 
-// The Data for a single style (Color)
+/**
+ * @brief Structure to hold data for a single tileset.
+ */
 struct TilesetData {
-    float r, g, b; // Red, Green, Blue (0.0 to 1.0)
+	float r, g, b;            /**< Rgb color values for the tileset. */
+	AEGfxTexture* pTexture;   /**< Pointer to the loaded texture for this tileset. */
 };
 
-// 3. The Manager
+/**
+ * @brief Manager class for handling dungeon tileset styles.
+ */
 class TilesetManager {
 public:
-    /**
-     * @brief Initializes the global list of tileset visual styles and colors.
-     */
-    static void Load();
+	/**
+	 * @brief Initializes and loads tileset data.
+	 */
+	static void Load();
 
-    /**
-     * @brief Retrieves the visual data (RGB colors) for a requested tileset.
-     * @param type The specific TilesetType enum identifier.
-     * @return A constant reference to the TilesetData structure.
-     */
-    static const TilesetData& Get(TilesetType type);
+	/**
+	 * @brief Releases all loaded texture assets from the gpu memory.
+	 */
+	static void Unload();
 
-    /**
-     * @brief Selects a valid, randomized visual style from the loaded list.
-     * @return A random TilesetType enum.
-     */
-    static TilesetType GetRandom();
+	/**
+	 * @brief Returns the data for a specific tileset type.
+	 * @param type The tileset type to retrieve.
+	 * @return A constant reference to the tileset data.
+	 */
+	static const TilesetData& Get(TilesetType type);
+
+	/**
+	 * @brief Returns a random tileset type from the available list.
+	 * @return A randomly selected tileset type.
+	 */
+	static TilesetType GetRandom();
+
+	static AEGfxTexture* s_pBossTexture;
 
 private:
-    static std::vector<TilesetData> s_List;
+	static std::vector<TilesetData> s_List; 
 };
 
 #endif

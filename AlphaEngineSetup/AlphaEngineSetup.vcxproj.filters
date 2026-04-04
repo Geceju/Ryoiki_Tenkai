@@ -73,6 +73,10 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Logo.cpp">
+    <ClCompile Include="AudioSystem.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AssetLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -144,6 +148,10 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Logo.h">
+    <ClInclude Include="AudioSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AssetLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

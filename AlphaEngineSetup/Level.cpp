@@ -9,6 +9,7 @@
 #include "Tilesets.h" 
 #include "Inventory.h"
 #include "Leaderboard.h"
+#include "AudioSystem.h"
 #include <cstdio> 
 #include <cmath>  
 #include <queue> 
@@ -29,7 +30,8 @@ static AEGfxTexture* g_texWall = nullptr;  //wall
 static AEGfxVertexList* g_pUnitSquare = nullptr;
 static AEGfxVertexList* g_pRectOutline = nullptr;
 
-// entity data
+// ENTITY DATA
+
 // player character
 static std::unique_ptr<Character> g_Character = nullptr;
 
@@ -38,9 +40,29 @@ static std::vector<SimpleEnemy> g_Enemies;
 static int g_Difficulty = 1;
 static int lives = 3;
 static float invun_timer = 0.0f;
+
+// --- JUICE & VISUAL EFFECTS ---
+struct DamageParticle {
+	float x, y, vx, vy, life, maxLife;
+};
+static std::vector<DamageParticle> g_DamageParticles;
+static float g_ScreenShakeTimer = 0.0f;
+static AEGfxTexture* g_pJumpscareTex = nullptr;
+
 // END ENTITY DATA
 
-// level state
+// Tutorial State
+static bool s_ShowTutorial = false;
+
+// --- TUTORIAL TEXTURES ---
+static AEGfxTexture* tut_EnokiTex = nullptr;
+static AEGfxTexture* tut_EnemyTex = nullptr;
+static AEGfxTexture* tut_BlueMushTex = nullptr;
+static AEGfxTexture* tut_GreenMushTex = nullptr;
+static AEGfxTexture* tut_RedMushTex = nullptr;
+static AEGfxTexture* tut_KeyTex = nullptr;
+
+// Level state
 static bool g_RevealNeighbors = true;
 static Room* g_BossRoom = nullptr;
 static bool g_ShowWayfinder = false;
@@ -48,17 +70,27 @@ static bool g_ShowColors = false;
 static bool g_ShowKeyLocation = false;
 static s8 g_FontId = -1;
 
-// Settings/Pause state
+// Settings/pause state
 static bool s_ShowSettings = false;
 
-// Level Transition state
+// Level transition state
 static bool s_ShowLevelComplete = false;
 static bool s_EnemyContact = false;
+
+// End room UI state
+static float g_EndRoomTextAlpha = 0.0f;
+static bool g_EndRoomFadeIn = true;
+static float g_FadeSpeed = 1.5f;
 
 // Leaderboard state
 static bool s_IsEnteringName = false;
 static std::string s_CurrentName = "";
 static bool s_ShowNameWarning = false;
+
+// Debug State
+static bool s_ShowDebug = false;
+static bool s_GodMode = false;
+static bool s_NoClip = false;
 
 /**
  * @brief Draws a rotated and scaled line segment between two points using a unit square mesh.
@@ -211,8 +243,19 @@ static bool IsTileReachable(Room* room, int startX, int startY, int targetX, int
 void Level_Load()
 {
 	AEGfxMeshStart();
-	AEGfxTriAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f, 0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
-	AEGfxTriAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, 0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+
+	// Triangle 1
+	AEGfxTriAdd(
+		-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f,
+		0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
+		-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+
+	// Triangle 2
+	AEGfxTriAdd(
+		0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f,
+		0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f,
+		-0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
+
 	g_pUnitSquare = AEGfxMeshEnd();
 
 	AEGfxMeshStart();
@@ -228,13 +271,31 @@ void Level_Load()
 
 	// wall texture
 	g_texWall = AEGfxTextureLoad("Assets/Assets/stone-texture-background.jpg");
+	// --- LOAD TUTORIAL SPRITES ---
+	tut_EnokiTex = AEGfxTextureLoad("Assets/jogo.png");
+	tut_EnemyTex = AEGfxTextureLoad("Assets/enemy.png");
+	tut_BlueMushTex = AEGfxTextureLoad("Assets/bluemushroom.png"); // Check your filename!
+	tut_GreenMushTex = AEGfxTextureLoad("Assets/greenmushroom.png"); // Check your filename!
+	tut_RedMushTex = AEGfxTextureLoad("Assets/redmushroom.png"); // Check your filename!
+	tut_KeyTex = AEGfxTextureLoad("Assets/babycarrot.png");
+	TilesetManager::Load();
 
 	// Initialize items graphics (AFTER engine is ready)
 	g_ItemsManager.InitializeGraphics();
-	g_Inventory.Load();  // ADD THIS
-
+	g_Inventory.Load();
+	// Jumpscare img
+	g_pJumpscareTex = AEGfxTextureLoad("Assets/enemy.png");
 	// Load shared settings menu resources
 	SettingsMenu_Load();
+
+	// Reset all Debug and Tool flags to FALSE
+	s_ShowDebug = false; // The menu itself starts hidden
+	s_GodMode = false;
+	s_NoClip = false;
+	g_RevealNeighbors = true;
+	g_ShowWayfinder = false;
+	g_ShowColors = false;
+	g_ShowKeyLocation = false;
 }
 
 void Level_Init()
@@ -252,7 +313,16 @@ void Level_Init()
 
 	// Calculate current level mathematically
 	g_CurrentRunLevel = (gGameStateCurr - GS_LEVEL1) + 1;
-	if (gGameStateCurr == GS_LEVEL1) lives = 3;
+	if (gGameStateCurr == GS_LEVEL1) {
+		lives = 3;
+		s_ShowTutorial = true; // --- SHOW TUTORIAL ON LEVEL 1 ---
+	}
+	else {
+		s_ShowTutorial = false; // Hide it on deeper levels
+	}
+	// Damage Particles clear
+	g_DamageParticles.clear();
+	g_ScreenShakeTimer = 0.0f;
 
 	RoomGenerator generator;
 	g_DungeonRooms = generator.Generate(3072, 3072, 512);
@@ -269,6 +339,7 @@ void Level_Init()
 	if (startRoom)
 	{
 		float tileSize = startRoom->rect.width() / 16.0f;
+
 		int startGridX = static_cast<int>(startRoom->rect.GetCenter().x / tileSize);
 		int startGridY = static_cast<int>(startRoom->rect.GetCenter().y / tileSize);
 
@@ -439,12 +510,15 @@ void Level_Init()
 	s_ShowNameWarning = false;
 
 	SettingsMenu_Initialize();
+
+	// Start the dungeon music
+	AudioSystem::Play("LevelBGM");
 }
 
 void Level_Update()
 {
 	// Toggle Settings/Pause
-	if (AEInputCheckTriggered(AEVK_ESCAPE))
+	if (AEInputCheckTriggered(AEVK_ESCAPE) && !s_IsEnteringName && !s_ShowLevelComplete && lives > 0 && !s_ShowTutorial)
 	{
 		s_ShowSettings = !s_ShowSettings;
 		printf("Settings Menu: %s\n", s_ShowSettings ? "ON" : "OFF");
@@ -456,6 +530,7 @@ void Level_Update()
 		return; // Stop game logic while menu is open
 	}
 
+	// Capture Player Name for Leaderboard
 	if (s_IsEnteringName) {
 		// Capture A-Z keys
 		for (int i = AEVK_A; i <= AEVK_Z; ++i) {
@@ -505,32 +580,50 @@ void Level_Update()
 		return;
 	}
 
+	// Handle Tutorial Overlay
+	if (s_ShowTutorial) {
+		if (AEInputCheckTriggered(AEVK_RETURN)) {
+			s_ShowTutorial = false; // Dismiss tutorial
+		}
+		return; // Halt the update loop so the game stays paused!
+	}
+
+	// Check if player is dead before updating physics or timers
+	if (lives <= 0) {
+		if (AEInputCheckTriggered(AEVK_BACK)) {
+			gGameStateNext = GS_MAINMENU; // Return to menu
+		}
+		if (AEInputCheckTriggered(AEVK_R)) {
+			gGameStateNext = GS_RESTART; // Allow quick restart
+		}
+		return; // Stop the rest of the game from running!
+	}
+
 	float dt = (float)AEFrameRateControllerGetFrameTime();
 	g_RunTimer += dt;
 
 	// Normal Level Updates
 	if (AEInputCheckTriggered(AEVK_R)) { gGameStateNext = GS_RESTART; printf("Restarting Level...\n"); }
 
-	// If they quit early, save their progress up to this level
-	//if (AEInputCheckTriggered(AEVK_Q)) {
-	//	// Trigger name entry instead of instantly quitting
-	//	if (g_CurrentRunLevel > 1 || g_RunTimer > 10.0f) {
-	//		s_IsEnteringName = true;
-	//	}
-	//	else {
-	//		gGameStateNext = GS_MAINMENU;
-	//	}
-	//}
+	// --- F3 DEBUG MENU CONTROLS ---
+	if (AEInputCheckTriggered(AEVK_F3)) {
+		s_ShowDebug = !s_ShowDebug;
+	}
 
-	if (AEInputCheckTriggered(AEVK_N)) { g_RevealNeighbors = !g_RevealNeighbors; printf("Reveal Neighbors: %s\n", g_RevealNeighbors ? "ON" : "OFF"); }
-	if (AEInputCheckTriggered(AEVK_M)) { g_ShowWayfinder = !g_ShowWayfinder; printf("Show Wayfinder: %s\n", g_ShowWayfinder ? "ON" : "OFF"); }
-	if (AEInputCheckTriggered(AEVK_C)) { g_ShowColors = !g_ShowColors; printf("Show Colors: %s\n", g_ShowColors ? "ON" : "OFF"); }
+	// Only allow these toggles if the Debug Menu is OPEN!
+	if (s_ShowDebug) {
+		if (AEInputCheckTriggered(AEVK_G)) { s_GodMode = !s_GodMode; printf("Godmode: %s\n", s_GodMode ? "ON" : "OFF"); }
+		if (AEInputCheckTriggered(AEVK_V)) {
+			s_NoClip = !s_NoClip;
+			if (g_Character) g_Character->isNoClip = s_NoClip; // Tell the player to ignore walls!
+			printf("Noclip: %s\n", s_NoClip ? "ON" : "OFF");
+		}
 
-	// Show the key's location on the map when 'K' is pressed
-	if (AEInputCheckTriggered(AEVK_K))
-	{
-		g_ShowKeyLocation = !g_ShowKeyLocation;
-		printf("Key Tracker: %s\n", g_ShowKeyLocation ? "ON" : "OFF");
+		// Map & Visual Debuggers
+		if (AEInputCheckTriggered(AEVK_N)) { g_RevealNeighbors = !g_RevealNeighbors; printf("Reveal Neighbors: %s\n", g_RevealNeighbors ? "ON" : "OFF"); }
+		if (AEInputCheckTriggered(AEVK_M)) { g_ShowWayfinder = !g_ShowWayfinder; printf("Show Wayfinder: %s\n", g_ShowWayfinder ? "ON" : "OFF"); }
+		if (AEInputCheckTriggered(AEVK_C)) { g_ShowColors = !g_ShowColors; printf("Show Colors: %s\n", g_ShowColors ? "ON" : "OFF"); }
+		if (AEInputCheckTriggered(AEVK_K)) { g_ShowKeyLocation = !g_ShowKeyLocation; printf("Key Tracker: %s\n", g_ShowKeyLocation ? "ON" : "OFF"); }
 	}
 
 	// Update inventory (handles number key presses)
@@ -547,6 +640,18 @@ void Level_Update()
 			if (px >= g_BossRoom->rect.left && px <= g_BossRoom->rect.right &&
 				py >= g_BossRoom->rect.bottom && py <= g_BossRoom->rect.top)
 			{
+				// Update fade timer for text pulse effect
+				if (g_EndRoomFadeIn)
+				{
+					g_EndRoomTextAlpha += g_FadeSpeed * dt;
+					if (g_EndRoomTextAlpha >= 1.0f) { g_EndRoomTextAlpha = 1.0f; g_EndRoomFadeIn = false; }
+				}
+				else
+				{
+					g_EndRoomTextAlpha -= g_FadeSpeed * dt;
+					if (g_EndRoomTextAlpha <= 0.2f) { g_EndRoomTextAlpha = 0.2f; g_EndRoomFadeIn = true; }
+				}
+
 				if (AEInputCheckTriggered(AEVK_E)) {
 					int keyCount = g_Inventory.GetKeyCount();
 					if (keyCount >= 3) {
@@ -559,20 +664,42 @@ void Level_Update()
 					}
 				}
 			}
+			else
+			{
+				// Reset alpha when player leaves the room
+				g_EndRoomTextAlpha = 0.0f;
+				g_EndRoomFadeIn = true;
+			}
 		}
 
 		g_Character->Update(g_DungeonRooms);
-
-		// Make sure Character class expects a vector here now
 		g_Character->UpdateAbilities(dt, g_Enemies, g_ItemsManager, g_DungeonRooms);
 		g_Character->CheckItemCollection(g_ItemsManager);
 
-		AEGfxSetCamPosition(g_Character->GetWorldX(), g_Character->GetWorldY());
+		// --- UPDATE DAMAGE PARTICLES ---
+		for (auto it = g_DamageParticles.begin(); it != g_DamageParticles.end(); ) {
+			it->x += it->vx * dt;
+			it->y += it->vy * dt;
+			it->life -= dt;
+			if (it->life <= 0.0f) it = g_DamageParticles.erase(it);
+			else ++it;
+		}
+
+		// --- UPDATE CAMERA WITH SCREEN SHAKE ---
+		float camX = g_Character->GetWorldX();
+		float camY = g_Character->GetWorldY();
+
+		if (g_ScreenShakeTimer > 0.0f) {
+			g_ScreenShakeTimer -= dt;
+			// Shake the camera wildly by up to 15 pixels in any direction
+			camX += (float)((rand() % 30) - 15);
+			camY += (float)((rand() % 30) - 15);
+		}
+		AEGfxSetCamPosition(camX, camY);
 
 		// Room Discovery
 		for (auto& room : g_DungeonRooms)
 		{
-			// check boundary collision using the new AABB helper
 			if (Collision_PointInRect(g_Character->GetWorldX(), g_Character->GetWorldY(), room->rect))
 			{
 				room->isDiscovered = true;
@@ -584,31 +711,37 @@ void Level_Update()
 			}
 		}
 
-
 		// Update Enemies and Items
 		float playerWorldX = g_Character->GetWorldX();
 		float playerWorldY = g_Character->GetWorldY();
 
-
 		for (auto& enemy : g_Enemies)
 		{
-			// Update enemy AI/Movement
 			enemy.Update(playerWorldX, playerWorldY, dt, g_DungeonRooms);
 			float dx = playerWorldX - enemy.GetWorldX();
 			float dy = playerWorldY - enemy.GetWorldY();
 			float distToPlayer = dx * dx + dy * dy;
 			// 625 = 25^2
-			if (distToPlayer < 625 && !s_EnemyContact && !enemy.IsStunned()) {
+			if (distToPlayer < 625 && !s_EnemyContact && !enemy.IsStunned() && !s_GodMode) {
+				AudioSystem::Play("Hit");
 				s_EnemyContact = true;
 				lives--;
 				g_Character->TriggerStun(g_Enemies);
+
+				// --- TRIGGER IMPACT JUICE ---
+				g_ScreenShakeTimer = 0.35f; // 0.35 seconds of violent shake
+
+				// Spawn 40 blood/spark particles bursting outward
+				for (int i = 0; i < 40; ++i) {
+					float angle = (float)(rand() % 360) * 3.14159f / 180.0f;
+					float speed = (float)((rand() % 400) + 150); // Explode outwards fast
+					g_DamageParticles.push_back({
+						playerWorldX, playerWorldY,
+						cosf(angle) * speed, sinf(angle) * speed,
+						0.4f, 0.4f // Live for 0.4 seconds
+						});
+				}
 			}
-		}
-		if (lives <= 0) {
-			if (AEInputCheckTriggered(AEVK_BACK)) {
-				gGameStateNext = GS_MAINMENU; // Return to menu
-			}
-			return;
 		}
 
 		if (s_EnemyContact) {
@@ -618,7 +751,7 @@ void Level_Update()
 				invun_timer = 0.0f;
 			}
 		}
-		// Safely update items with the defined variables
+
 		g_ItemsManager.Update(playerWorldX, playerWorldY, 0.0f);
 	}
 
@@ -628,10 +761,7 @@ void Level_Update()
 		printf("Items collected: %d/%d\n",
 			g_ItemsManager.GetCollectedCount(),
 			g_ItemsManager.GetTotalCount());
-
-		printf("Uncollected items at positions:\n");
 	}
-
 }
 
 void Level_Draw()
@@ -639,17 +769,23 @@ void Level_Draw()
 	AEGfxSetBackgroundColor(0.0f, 0.0f, 0.0f);
 	AEGfxSetRenderMode(AE_GFX_RM_COLOR);
 
-	// Draw Rooms
+	// Logic for drawing rooms.
 	for (const auto& room : g_DungeonRooms)
 	{
+		// Skips drawing if the room has not been discovered by the player.
 		if (!room->isDiscovered) continue;
+		// Retrieves the visual style data for the current room.
 		const TilesetData& style = TilesetManager::Get(room->tilesetID);
 
+		// Resets the color to white so the previous room's wall color (black) 
+		// doesn't make this room's floor black.
+		AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
+
+		// Sets up the transformation matrix for the floor mesh.
 		AEMtx33 scale, trans, transform;
 		AEMtx33Scale(&scale, (float)room->rect.width(), (float)room->rect.height());
 		AEMtx33Trans(&trans, room->rect.GetCenter().x, room->rect.GetCenter().y);
 		AEMtx33Concat(&transform, &trans, &scale);
-		AEGfxSetTransform(transform.m);
 
 		// --- DRAW FLOOR (Reverted to colors) ---
 		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
@@ -661,6 +797,23 @@ void Level_Draw()
 			if (room->type == RoomType::Start) AEGfxSetColorToMultiply(0.0f, 1.0f, 0.0f, 1.0f);
 			else AEGfxSetColorToMultiply(style.r, style.g, style.b, 1.0f);
 		}
+		else if (room->type == RoomType::Boss) {
+			// Boss Room is always a unique color to identify it
+			AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+			AEGfxSetColorToMultiply(0.8f, 0.0f, 0.0f, 1.0f); // Vibrant Red
+		}
+		else if (!g_ShowColors) {
+			// BASE MODE: Uniform Grayscale for standard rooms
+			AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+			AEGfxSetColorToMultiply(0.3f, 0.3f, 0.3f, 1.0f); // Medium Gray
+		}
+		else {
+			// DEBUG MODE: Use the specific tileset color (Purple, Blue, etc.)
+			AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+			AEGfxSetColorToMultiply(style.r, style.g, style.b, 1.0f);
+		}
+
+		// Executes the draw call for the floor quad.
 		AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
 
 		// --- DRAW WALLS ---
@@ -685,6 +838,7 @@ void Level_Draw()
 			}
 		}
 
+		// Renders the exit text specifically for the boss room.
 		if (room->type == RoomType::Boss)
 		{
 			// Temporarily disable textures for text printing
@@ -707,17 +861,43 @@ void Level_Draw()
 	// Draw Items
 	// Draw Items (Now uses the official textured Draw function in Items.cpp!)
 	g_ItemsManager.Draw();
+	// --- DRAW ENEMY VISION CONES FIRST ---
+	AEGfxSetBlendMode(AE_GFX_BM_BLEND); // Ensure blending is ON for the cones
 	for (auto& enemy : g_Enemies)
 	{
-		enemy.Draw();
+		enemy.DrawVisionOverlay();
 	}
-	// --- NEW: DRAW THE DARKNESS OVERLAY HERE ---
+
+	// --- DRAW ENEMY SPRITES SECOND ---
+	for (auto& enemy : g_Enemies)
+	{
+		enemy.Draw(); // This function handles its own internal states
+	}
+	// --- DRAW THE DARKNESS OVERLAY HERE ---
 	if (g_Character) {
 		g_Character->DrawVisionOverlay();
 
 		// Draw the Player and Abilities LAST so they sit on top of the darkness
 		g_Character->DrawAbilities();
 		g_Character->Draw();
+	}
+	// --- DRAW DAMAGE PARTICLES ---
+	if (!g_DamageParticles.empty()) {
+		AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+		for (const auto& p : g_DamageParticles) {
+			float alpha = p.life / p.maxLife; // Fade out as they die
+			AEGfxSetColorToMultiply(1.0f, 0.0f, 0.0f, alpha); // Red Blood
+
+			AEMtx33 scale, trans, transform;
+			AEMtx33Scale(&scale, 8.0f, 8.0f); // Small 8x8 pixel chunks
+			AEMtx33Trans(&trans, p.x, p.y);
+			AEMtx33Concat(&transform, &trans, &scale);
+
+			AEGfxSetTransform(transform.m);
+			AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
+		}
+		AEGfxSetBlendMode(AE_GFX_BM_NONE);
 	}
 	// -------------------------------------------
 
@@ -744,33 +924,124 @@ void Level_Draw()
 	// Wayfinder to key location
 	if (g_ShowKeyLocation && g_Character)
 	{
-		for (const auto& item : g_ItemsManager.GetItems())
+		float pX = g_Character->GetWorldX();
+		float pY = g_Character->GetWorldY();
+
+		Item* closestKey = nullptr;
+
+		// Initialize with a massive number so keys at ANY distance are valid
+		float minDistanceSq = 1e12f;
+
+		// Scan EVERY item in the manager
+		for (auto& item : g_ItemsManager.GetItems())
 		{
-			// Using 'item.collected', 'item.x', and 'item.y' based on Items.cpp
-			// Change them to isCollected/worldX if you recently renamed them.
+			// Must be a KEY and must NOT be collected yet
 			if (item.type == ItemType::KEY && !item.collected)
 			{
-				// Draw a blue line straight from the player to the key
-				DrawLineSegment(
-					g_Character->GetWorldX(), g_Character->GetWorldY(),
-					item.x, item.y,
-					5.0f, 1.0f, 0.0f, 1.0f, 0.7f // 5px thick, Purple, 70% opacity
-				);
+				float dx = item.x - pX;
+				float dy = item.y - pY;
 
-				// Draw a massive yellow highlight box around the key itself
-				AEMtx33 scale, trans, transform;
-				AEMtx33Scale(&scale, 120.0f, 120.0f); // Make it big enough to easily spot
-				AEMtx33Trans(&trans, item.x, item.y);
-				AEMtx33Concat(&transform, &trans, &scale);
+				// Squared distance check
+				float distSq = (dx * dx) + (dy * dy);
 
-				AEGfxSetRenderMode(AE_GFX_RM_COLOR);
-				AEGfxSetColorToMultiply(1.0f, 1.0f, 0.0f, 1.0f); // Solid Yellow
-				AEGfxSetTransform(transform.m);
-				AEGfxMeshDraw(g_pRectOutline, AE_GFX_MDM_LINES_STRIP); // Use your hollow rect mesh
-
-				break; // We found the key, no need to keep checking items
+				if (distSq < minDistanceSq)
+				{
+					minDistanceSq = distSq;
+					closestKey = const_cast<Item*>(&item);
+				}
 			}
 		}
+
+		// After checking the WHOLE map, if a key exists, draw it
+		if (closestKey)
+		{
+			// This line will now stretch across the entire map if needed
+			DrawLineSegment(
+				pX, pY,
+				closestKey->x, closestKey->y,
+				5.0f, 1.0f, 0.0f, 1.0f, 0.7f // Purple
+			);
+
+			// Draw the highlight box at the key's world coordinates
+			AEMtx33 scale, trans, transform;
+			AEMtx33Scale(&scale, 120.0f, 120.0f);
+			AEMtx33Trans(&trans, closestKey->x, closestKey->y);
+			AEMtx33Concat(&transform, &trans, &scale);
+
+			AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+			AEGfxSetColorToMultiply(1.0f, 1.0f, 0.0f, 1.0f); // Yellow
+			AEGfxSetTransform(transform.m);
+
+			if (g_pRectOutline) {
+				AEGfxMeshDraw(g_pRectOutline, AE_GFX_MDM_LINES_STRIP);
+			}
+		}
+	}
+
+	// Draw End Room Fading Reminders
+	if (g_Character && g_BossRoom && g_EndRoomTextAlpha > 0.0f)
+	{
+		float px = g_Character->GetWorldX();
+		float py = g_Character->GetWorldY();
+
+		if (px >= g_BossRoom->rect.left && px <= g_BossRoom->rect.right &&
+			py >= g_BossRoom->rect.bottom && py <= g_BossRoom->rect.top)
+		{
+			int keyCount = g_Inventory.GetKeyCount();
+			char reminderBuf[64];
+
+			if (keyCount >= 3)
+			{
+				sprintf_s(reminderBuf, "PRESS 'E' TO ESCAPE!");
+			}
+			else
+			{
+				sprintf_s(reminderBuf, "COLLECT ALL KEYS (%d/3)", keyCount);
+			}
+
+			if (g_FontId >= 0)
+			{
+				// Position text near the center bottom
+				AEGfxPrint(g_FontId, reminderBuf, -0.22f, -0.6f, 1.2f, 1.0f, 1.0f, 1.0f, g_EndRoomTextAlpha);
+			}
+		}
+	}
+
+	// DRAW THE RUN TIMER
+	if (g_FontId >= 0) {
+		// DRAW THE RUN TIMER
+		if (g_FontId >= 0) {
+			int minutes = static_cast<int>(g_RunTimer) / 60;
+			float seconds = fmod(g_RunTimer, 60.0f);
+			char timeBuf[32];
+			sprintf_s(timeBuf, "Time: %02d:%05.2f", minutes, seconds);
+
+			// FIX: Bumped Y up to 0.90f!
+			AEGfxPrint(g_FontId, timeBuf, -0.95f, 0.90f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+		}
+	}
+	//DEBUG MENU
+	if (s_ShowDebug && g_FontId >= 0) {
+		char fpsBuf[32], godBuf[32], clipBuf[32];
+		char neighBuf[32], wayBuf[32], colBuf[32], keyBuf[32];
+
+		// Format all the strings
+		sprintf_s(fpsBuf, "FPS: %.0f", (float)AEFrameRateControllerGetFrameRate());
+		sprintf_s(godBuf, "Godmode (G): %s", s_GodMode ? "ON" : "OFF");
+		sprintf_s(clipBuf, "Noclip (V): %s", s_NoClip ? "ON" : "OFF");
+		sprintf_s(neighBuf, "Neighbors (N): %s", g_RevealNeighbors ? "ON" : "OFF");
+		sprintf_s(wayBuf, "Wayfinder (M): %s", g_ShowWayfinder ? "ON" : "OFF");
+		sprintf_s(colBuf, "Colors (C): %s", g_ShowColors ? "ON" : "OFF");
+		sprintf_s(keyBuf, "Key Tracker (K): %s", g_ShowKeyLocation ? "ON" : "OFF");
+
+		// Stack them neatly down the left side of the screen
+		AEGfxPrint(g_FontId, fpsBuf, -0.95f, 0.65f, 0.8f, 0.0f, 1.0f, 0.0f, 1.0f); // Green
+		AEGfxPrint(g_FontId, godBuf, -0.95f, 0.60f, 0.8f, 0.0f, 1.0f, 0.0f, 1.0f);
+		AEGfxPrint(g_FontId, clipBuf, -0.95f, 0.55f, 0.8f, 0.0f, 1.0f, 0.0f, 1.0f);
+		AEGfxPrint(g_FontId, neighBuf, -0.95f, 0.50f, 0.8f, 0.0f, 1.0f, 0.0f, 1.0f);
+		AEGfxPrint(g_FontId, wayBuf, -0.95f, 0.45f, 0.8f, 0.0f, 1.0f, 0.0f, 1.0f);
+		AEGfxPrint(g_FontId, colBuf, -0.95f, 0.40f, 0.8f, 0.0f, 1.0f, 0.0f, 1.0f);
+		AEGfxPrint(g_FontId, keyBuf, -0.95f, 0.35f, 0.8f, 0.0f, 1.0f, 0.0f, 1.0f);
 	}
 
 	// Settings Overlay
@@ -876,44 +1147,156 @@ void Level_Draw()
 
 	if (lives <= 0)
 	{
-		// Draw a semi-transparent dark background
 		float camX = g_Character ? g_Character->GetWorldX() : 0.0f;
 		float camY = g_Character ? g_Character->GetWorldY() : 0.0f;
 
+		// JUMPSCARE SHAKE: Violently shake the camera forever while dead
+		camX += (float)((rand() % 60) - 30);
+		camY += (float)((rand() % 60) - 30);
+
+		// 1. Draw Pitch Black Background
 		AEMtx33 scale, trans, transform;
-		AEMtx33Scale(&scale, 4000.0f, 4000.0f); // Make it huge to cover the screen
+		AEMtx33Scale(&scale, 4000.0f, 4000.0f);
 		AEMtx33Trans(&trans, camX, camY);
 		AEMtx33Concat(&transform, &trans, &scale);
 
 		AEGfxSetBlendMode(AE_GFX_BM_BLEND);
 		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
-		AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 0.85f); // 85% opacity black
+		AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 1.0f); // Solid Black
 		AEGfxSetTransform(transform.m);
 		AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
-		AEGfxSetBlendMode(AE_GFX_BM_NONE);
 
-		// Draw the Text (Using NDC coordinates so it sticks to the screen)
-		if (g_FontId >= 0) {
-			AEGfxPrint(g_FontId, (char*)"You Lose", -0.2f, 0.3f, 1.5f, 1.0f, 0.0f, 0.0f, 1.0f); // Green text
+		// 2. Draw Giant Red Jumpscare Face!
+		if (g_pJumpscareTex) {
+			AEMtx33Scale(&scale, 1500.0f, 1500.0f); // Massive Scale!
+			AEMtx33Trans(&trans, camX, camY);
+			AEMtx33Concat(&transform, &trans, &scale);
 
-			AEGfxPrint(g_FontId, (char*)"Press [BACKSPACE] to Return to Menu", -0.275f, -0.2f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+			AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
+			AEGfxSetColorToMultiply(1.0f, 0.0f, 0.0f, 1.0f); // Tint it bloody red
+			AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
+			AEGfxTextureSet(g_pJumpscareTex, 0.0f, 0.0f);
+
+			AEGfxSetTransform(transform.m);
+			AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
 		}
+
+		// 3. Draw "You Died" Text
+		if (g_FontId >= 0) {
+			AEGfxPrint(g_FontId, (char*)"YOU DIED", -0.1f, 0.3f, 2.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+			AEGfxPrint(g_FontId, (char*)"Press [BACKSPACE] to Return to Menu", -0.28f, -0.4f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+		}
+
+		// Reset Engine State
+		AEGfxTextureSet(nullptr, 0.0f, 0.0f);
+		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+		AEGfxSetBlendMode(AE_GFX_BM_NONE);
 	}
+	// --- DRAW TUTORIAL OVERLAY ---
+	if (s_ShowTutorial) {
+		// Draw a semi-transparent dark background
+		float camX = g_Character ? g_Character->GetWorldX() : 0.0f;
+		float camY = g_Character ? g_Character->GetWorldY() : 0.0f;
+
+		AEMtx33 scale, trans, transform;
+		AEMtx33Scale(&scale, 4000.0f, 4000.0f);
+		AEMtx33Trans(&trans, camX, camY);
+		AEMtx33Concat(&transform, &trans, &scale);
+
+		AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+		AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 0.90f); // 90% opacity black
+		AEGfxSetTransform(transform.m);
+		AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
+
+		// Helper function to draw UI Sprites locked to the screen
+		auto DrawUISprite = [&](AEGfxTexture* tex, float ndcX, float ndcY, float size) {
+			if (!tex) return;
+
+			// CRITICAL FIX: Use Engine World Bounds instead of raw pixels!
+			// This perfectly synchronizes with AEGfxPrint's internal coordinate system.
+			float worldOffsetX = ndcX * AEGfxGetWinMaxX();
+			float worldOffsetY = ndcY * AEGfxGetWinMaxY();
+
+			AEMtx33 s, t, finalMtx;
+			AEMtx33Scale(&s, size, size);
+			AEMtx33Trans(&t, camX + worldOffsetX, camY + worldOffsetY);
+			AEMtx33Concat(&finalMtx, &t, &s);
+
+			AEGfxSetRenderMode(AE_GFX_RM_TEXTURE);
+			AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+			AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
+			AEGfxSetColorToAdd(0.0f, 0.0f, 0.0f, 0.0f);
+			AEGfxTextureSet(tex, 0.0f, 0.0f);
+
+			AEGfxSetTransform(finalMtx.m);
+			AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
+			};
+
+		// Draw the Tutorial Text and Sprites
+		AEGfxSetBlendMode(AE_GFX_BM_BLEND); // Required for text transparency
+		if (g_FontId >= 0) {
+			AEGfxPrint(g_FontId, (char*)"HOW TO PLAY", -0.125f, 0.7f, 1.5f, 0.0f, 1.0f, 1.0f, 1.0f); // Cyan
+
+			// ALIGNMENT GRID: Change these to shift the entire column left or right!
+			float textX = -0.20f;
+			float sprX = 0.05f;
+			float yAdj = -0.60f; // Pushes the sprite up slightly to perfectly center with text
+
+			// Basic Controls
+			DrawUISprite(tut_EnokiTex, sprX, 0.4f + yAdj, 50.0f);
+			AEGfxPrint(g_FontId, (char*)"WASD : Move Enoki Ninja", textX, 0.4f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+
+			// Item 1: Speed (Blue)
+			DrawUISprite(tut_BlueMushTex, sprX, 0.2f + yAdj, 50.0f);
+			AEGfxPrint(g_FontId, (char*)"1 : Blue Mushroom gives a Speed Boost!", textX, 0.2f, 1.0f, 0.2f, 0.6f, 1.0f, 1.0f);
+
+			// Item 2: Stun (Green)
+			DrawUISprite(tut_GreenMushTex, sprX, 0.0f + yAdj, 50.0f);
+			AEGfxPrint(g_FontId, (char*)"2 : Green Mushroom Stuns all enemies!", textX, 0.0f, 1.0f, 0.2f, 1.0f, 0.2f, 1.0f);
+
+			// Item 3: Vision (Red)
+			DrawUISprite(tut_RedMushTex, sprX, -0.2f + yAdj, 50.0f);
+			AEGfxPrint(g_FontId, (char*)"3 : Red Mushroom finds the nearest key!", textX, -0.2f, 1.0f, 1.0f, 0.2f, 0.2f, 1.0f);
+
+			// Key & Door
+			DrawUISprite(tut_KeyTex, sprX, -0.4f + yAdj, 50.0f);
+			AEGfxPrint(g_FontId, (char*)"E : Unlock Exit Door (Requires 3 Keys)", textX, -0.4f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f);
+
+			// Enemy Warning
+			DrawUISprite(tut_EnemyTex, sprX, -0.6f + yAdj, 60.0f);
+			AEGfxPrint(g_FontId, (char*)"Avoid the Pursuing Enemies!", textX, -0.6f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f);
+
+			// Start Prompt
+			AEGfxPrint(g_FontId, (char*)"Press [ENTER] to Start", -0.15f, -0.85f, 1.2f, 0.0f, 1.0f, 0.0f, 1.0f); // Green
+		}
+
+		// Reset Engine State safely
+		AEGfxTextureSet(nullptr, 0.0f, 0.0f);
+		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+		AEGfxSetBlendMode(AE_GFX_BM_NONE);
+	}
+	// -----------------------------
 }
 
+// Clears the logic and memory for the current level objects.
 void Level_Free()
 {
+	// Iterates through rooms to clear neighbor pointers.
 	for (auto& room : g_DungeonRooms) if (room) room->ClearNeighbours();
+	// Clears the list of room pointers.
 	g_DungeonRooms.clear();
+	// Resets global pointers and flags.
 	g_Character = nullptr;
 	g_BossRoom = nullptr;
 	g_ItemsInitialized = false;
 }
 
+// Releases all gpu assets and engine resources.
 void Level_Unload()
 {
-	if (g_pUnitSquare) { AEGfxMeshFree(g_pUnitSquare); g_pUnitSquare = nullptr; }
-	if (g_pRectOutline) { AEGfxMeshFree(g_pRectOutline); g_pRectOutline = nullptr; }
+	// Releases the floor textures from the gpu.
+	TilesetManager::Unload();
 
 	if (g_texWall) { AEGfxTextureUnload(g_texWall); g_texWall = nullptr; }
 
@@ -921,22 +1304,42 @@ void Level_Unload()
 		AEGfxDestroyFont(g_FontId);
 		g_FontId = -1;
 	}
+	// --- UNLOAD TUTORIAL SPRITES ---
+	if (tut_EnokiTex) { AEGfxTextureUnload(tut_EnokiTex); tut_EnokiTex = nullptr; }
+	if (tut_EnemyTex) { AEGfxTextureUnload(tut_EnemyTex); tut_EnemyTex = nullptr; }
+	if (tut_BlueMushTex) { AEGfxTextureUnload(tut_BlueMushTex); tut_BlueMushTex = nullptr; }
+	if (tut_GreenMushTex) { AEGfxTextureUnload(tut_GreenMushTex); tut_GreenMushTex = nullptr; }
+	if (tut_RedMushTex) { AEGfxTextureUnload(tut_RedMushTex); tut_RedMushTex = nullptr; }
+	if (tut_KeyTex) { AEGfxTextureUnload(tut_KeyTex); tut_KeyTex = nullptr; }
 
-	SettingsMenu_Unload();
-
-	// Release any textures or allocated data inside the player class
-
-	for (auto& enemy : g_Enemies) {
-		enemy.Unload();
-	}
-	g_Enemies.clear();
-
-	// Clear the mesh ONCE at the very end
+	// Free the primary unit square mesh.
 	if (g_pUnitSquare) {
 		AEGfxMeshFree(g_pUnitSquare);
 		g_pUnitSquare = nullptr;
 	}
 
+	// Free the rectangle outline mesh.
+	if (g_pRectOutline) {
+		AEGfxMeshFree(g_pRectOutline);
+		g_pRectOutline = nullptr;
+	}
+
+	// Unload the inventory system assets.
 	g_Inventory.Unload();
+
+	// Unload settings menu resources.
 	SettingsMenu_Unload();
+
+	// Stop all active sound effects (heartbeat, footsteps, etc.)
+	AudioSystem::StopGroup(false);
+
+	// Release enemy textures and clear the list.
+	for (auto& enemy : g_Enemies)
+	{
+		enemy.Unload();
+	}
+	// Jumpscare free
+	if (g_pJumpscareTex) { AEGfxTextureUnload(g_pJumpscareTex); g_pJumpscareTex = nullptr; }
+	// Empties the enemy container.
+	g_Enemies.clear();
 }

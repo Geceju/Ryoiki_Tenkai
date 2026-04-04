@@ -1,6 +1,7 @@
 #include "SettingsMenu.h"
 #include "GameStateManager.h"
 #include "AABBCollision.h"
+#include "AudioSystem.h"
 #include <cstdio>
 #include <cmath>
 
@@ -12,6 +13,13 @@ bool g_VSyncEnabled = true;
 struct UI_Button {
     float x, y, scaleX, scaleY, r, g, b;
 };
+
+// 0 = None, 1 = Exit to Menu, 2 = Exit Game
+static int g_ConfirmState = 0;
+static UI_Button btnYes, btnNo;
+
+// Add this to your SettingsMenu_Init or Load to position the confirm buttons
+
 
 static UI_Button btnClose, btnVSync, btnExitMenu;
 static UI_Button btnMusMinus, btnMusPlus;
@@ -29,6 +37,8 @@ void SettingsMenu_Load() {
     // Use the exact case-sensitive filename from assets
     g_FontSettings = AEGfxCreateFont("Assets/Exo2-Regular.ttf", 20);
     if (g_FontSettings < 0) g_FontSettings = AEGfxCreateFont("Arial", 20);
+
+    g_ConfirmState = 0;
 }
 
 void SettingsMenu_Initialize() {
@@ -54,6 +64,10 @@ void SettingsMenu_Initialize() {
     // Exit to Menu Button
     btnExitMenu = { 0.0f, -130.0f, 240.0f, 40.0f, 0.8f, 0.2f, 0.2f };
 
+    // Confirmation Buttons (Centered relative to menu)
+    btnYes = { -60.0f, -50.0f, 80.0f, 40.0f, 0.0f, 1.0f, 0.0f };
+    btnNo = { 60.0f, -50.0f, 80.0f, 40.0f, 1.0f, 0.0f, 0.0f };
+
     AEGfxSetVSync(g_VSyncEnabled ? 1 : 0);
 }
 
@@ -67,37 +81,86 @@ void SettingsMenu_Update(bool& isMenuOpen) {
     float winW = (float)AEGfxGetWindowWidth();
     float winH = (float)AEGfxGetWindowHeight();
 
+    // Convert screen mouse coordinates to world coordinates
     float worldMX = (float)mouseX - (winW / 2.0f) + camX;
     float worldMY = (winH / 2.0f) - (float)mouseY + camY;
 
-    // Add the camX and camY to the button's base position directly in the function call
-    if (Collision_PointInButton(worldMX, worldMY, btnClose.x + camX, btnClose.y + camY, btnClose.scaleX, btnClose.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) isMenuOpen = false;
-
-    if (Collision_PointInButton(worldMX, worldMY, btnMusMinus.x + camX, btnMusMinus.y + camY, btnMusMinus.scaleX, btnMusMinus.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+    if (g_ConfirmState == 0)
     {
-        g_MusicVolume -= 0.1f; if (g_MusicVolume < 0.0f) g_MusicVolume = 0.0f;
-    }
-    if (Collision_PointInButton(worldMX, worldMY, btnMusPlus.x + camX, btnMusPlus.y + camY, btnMusPlus.scaleX, btnMusPlus.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
-    {
-        g_MusicVolume += 0.1f; if (g_MusicVolume > 1.0f) g_MusicVolume = 1.0f;
-    }
+        // Close the settings overlay
+        if (Collision_PointInButton(worldMX, worldMY, btnClose.x + camX, btnClose.y + camY, btnClose.scaleX, btnClose.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+        {
+            AudioSystem::Play("Click");
+            isMenuOpen = false;
+        }
 
-    if (Collision_PointInButton(worldMX, worldMY, btnSFXMinus.x + camX, btnSFXMinus.y + camY, btnSFXMinus.scaleX, btnSFXMinus.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
-    {
-        g_SFXVolume -= 0.1f; if (g_SFXVolume < 0.0f) g_SFXVolume = 0.0f;
-    }
-    if (Collision_PointInButton(worldMX, worldMY, btnSFXPlus.x + camX, btnSFXPlus.y + camY, btnSFXPlus.scaleX, btnSFXPlus.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
-    {
-        g_SFXVolume += 0.1f; if (g_SFXVolume > 1.0f) g_SFXVolume = 1.0f;
-    }
+        // Music Volume Down
+        if (Collision_PointInButton(worldMX, worldMY, btnMusMinus.x + camX, btnMusMinus.y + camY, btnMusMinus.scaleX, btnMusMinus.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) {
+            g_MusicVolume -= 0.1f;
+            if (g_MusicVolume < 0.0f) g_MusicVolume = 0.0f;
+            // Update the actual audio engine group volume
+            AudioSystem::SetBGMVolume(g_MusicVolume);
+        }
 
-    if (Collision_PointInButton(worldMX, worldMY, btnVSync.x + camX, btnVSync.y + camY, btnVSync.scaleX, btnVSync.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) {
-        g_VSyncEnabled = !g_VSyncEnabled;
-        AEGfxSetVSync(g_VSyncEnabled ? 1 : 0);
-        printf("VSync: %s\n", g_VSyncEnabled ? "ON" : "OFF");
-    }
+        // Music Volume Up
+        if (Collision_PointInButton(worldMX, worldMY, btnMusPlus.x + camX, btnMusPlus.y + camY, btnMusPlus.scaleX, btnMusPlus.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) {
+            g_MusicVolume += 0.1f;
+            if (g_MusicVolume > 1.0f) g_MusicVolume = 1.0f;
+            // Update the actual audio engine group volume
+            AudioSystem::SetBGMVolume(g_MusicVolume);
+        }
 
-    if (Collision_PointInButton(worldMX, worldMY, btnExitMenu.x + camX, btnExitMenu.y + camY, btnExitMenu.scaleX, btnExitMenu.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) gGameStateNext = GS_MAINMENU;
+        // SFX Volume Down
+        if (Collision_PointInButton(worldMX, worldMY, btnSFXMinus.x + camX, btnSFXMinus.y + camY, btnSFXMinus.scaleX, btnSFXMinus.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) {
+            g_SFXVolume -= 0.1f;
+            if (g_SFXVolume < 0.0f) g_SFXVolume = 0.0f;
+            // Update the actual audio engine group volume
+            AudioSystem::SetSFXVolume(g_SFXVolume);
+        }
+
+        // SFX Volume Up
+        if (Collision_PointInButton(worldMX, worldMY, btnSFXPlus.x + camX, btnSFXPlus.y + camY, btnSFXPlus.scaleX, btnSFXPlus.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) {
+            g_SFXVolume += 0.1f;
+            if (g_SFXVolume > 1.0f) g_SFXVolume = 1.0f;
+            // Update the actual audio engine group volume
+            AudioSystem::SetSFXVolume(g_SFXVolume);
+        }
+
+        // VSync Toggle
+        if (Collision_PointInButton(worldMX, worldMY, btnVSync.x + camX, btnVSync.y + camY, btnVSync.scaleX, btnVSync.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) {
+            g_VSyncEnabled = !g_VSyncEnabled;
+            AEGfxSetVSync(g_VSyncEnabled ? 1 : 0);
+            printf("VSync: %s\n", g_VSyncEnabled ? "ON" : "OFF");
+        }
+
+        // Exit to Main Menu
+        if (Collision_PointInButton(worldMX, worldMY, btnExitMenu.x + camX, btnExitMenu.y + camY, btnExitMenu.scaleX, btnExitMenu.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+        {
+            AudioSystem::Play("Click");
+            g_ConfirmState = 1; // Trigger "Exit to Menu?"
+        }
+    }
+    else
+    {
+		// Exit to Main Menu confirmation
+        if (Collision_PointInButton(worldMX, worldMY, btnYes.x + camX, btnYes.y + camY, btnYes.scaleX, btnYes.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON))
+        {
+            // Force silence for the game world
+            AudioSystem::StopGroup(false);
+
+            // Ensure MenuBGM starts fresh
+            // Stop the Music group first to prevent overlapping
+            AudioSystem::StopGroup(true);
+            AudioSystem::Play("MenuBGM");
+
+            AudioSystem::Play("Click");
+            gGameStateNext = GS_MAINMENU;
+        }
+        if (Collision_PointInButton(worldMX, worldMY, btnNo.x + camX, btnNo.y + camY, btnNo.scaleX, btnNo.scaleY) && AEInputCheckTriggered(AEVK_LBUTTON)) {
+            g_ConfirmState = 0; // Back to settings
+            AudioSystem::Play("Click");
+        }
+    }
 }
 
 static void DrawUIButtonRelative(const UI_Button& b, float camX, float camY) {
@@ -159,6 +222,31 @@ void SettingsMenu_Draw(bool isIngame) {
 
         if (isIngame) {
             AEGfxPrint(g_FontSettings, (char*)"Exit to Menu", -0.07f, -0.3f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+        }
+    }
+
+    if (g_ConfirmState != 0) {
+        // Draw dark background panel (Relative to Camera)
+        AEMtx33 scale, trans, transform;
+        AEMtx33Scale(&scale, 400.0f, 300.0f);
+        AEMtx33Trans(&trans, camX, camY);
+        AEMtx33Concat(&transform, &trans, &scale);
+
+        AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+        AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 0.9f);
+        AEGfxSetTransform(transform.m);
+        AEGfxMeshDraw(pMeshSettings, AE_GFX_MDM_TRIANGLES);
+        AEGfxSetBlendMode(AE_GFX_BM_NONE);
+
+        // Draw YES/NO Buttons using your existing helper
+        DrawUIButtonRelative(btnYes, camX, camY);
+        DrawUIButtonRelative(btnNo, camX, camY);
+
+        // Draw Text
+        if (g_FontSettings >= 0) {
+            AEGfxPrint(g_FontSettings, (char*)"Exit to Menu?", -0.07f, 0.1f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+            AEGfxPrint(g_FontSettings, (char*)"YES", -0.095f, -0.125f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+            AEGfxPrint(g_FontSettings, (char*)"NO", 0.06f, -0.125f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
         }
     }
 }

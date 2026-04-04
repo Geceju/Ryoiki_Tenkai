@@ -1,4 +1,5 @@
 #include "Enemy.h"
+#include "AudioSystem.h"
 #include <math.h> // For sqrtf
 #include <queue>
 #include <algorithm>
@@ -10,7 +11,8 @@ SimpleEnemy::SimpleEnemy()
     speed(200.0f), detectionRange(500.0f), giveUpRange(150.0f),
     currentState(EnemyState::IDLE), pMesh(nullptr),
     currentPathIndex(0), pathRecalculateTimer(0.0f),chaseTimer(0.0f),
-    hasPatrolTarget(false),maxChaseTime(5.0f),stunTimer(0.0f)// Initialize pathing vars
+    hasPatrolTarget(false),maxChaseTime(5.0f),stunTimer(0.0f),
+    facingAngle(0.0f), pVisionMesh(nullptr) // FIX: Initialize these here
 {
 }
 
@@ -24,7 +26,7 @@ void SimpleEnemy::Load()
 
     // Load the texture once
     if (!s_pEnemyTexture) {
-        s_pEnemyTexture = AEGfxTextureLoad("Assets/Assets/enemy.png"); // Adjust path if needed
+        s_pEnemyTexture = AEGfxTextureLoad("Assets/enemy.png"); // Adjust path if needed
     }
 
     AEGfxMeshStart();
@@ -32,14 +34,28 @@ void SimpleEnemy::Load()
     AEGfxTriAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f, 0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
     AEGfxTriAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, 0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
     pMesh = AEGfxMeshEnd();
+
+    LoadVisionMesh();
 }
 
 void SimpleEnemy::Unload()
 {
+    // Free the character sprite mesh
     if (pMesh)
     {
         AEGfxMeshFree(pMesh);
         pMesh = nullptr;
+    }
+
+    if (s_pEnemyTexture) {
+        AEGfxTextureUnload(s_pEnemyTexture);
+        s_pEnemyTexture = nullptr;
+    }
+
+    // Free the vision cone mesh
+    if (pVisionMesh) {
+        AEGfxMeshFree(pVisionMesh);
+        pVisionMesh = nullptr;
     }
 }
 
@@ -59,6 +75,7 @@ void SimpleEnemy::Stun(float duration)
         stunTimer = duration;
     }
 }
+
 
 void SimpleEnemy::Update(float playerX, float playerY, float dt, const std::vector<std::unique_ptr<Room>>& rooms)
 {
@@ -140,7 +157,38 @@ void SimpleEnemy::Update(float playerX, float playerY, float dt, const std::vect
 
     case EnemyState::CHASE:
         chaseTimer -= dt;
+        if (stunTimer <= 0.0f) {
+            // 1. Calculate distance between Enemy and Player
+            float dx = playerX - worldX;
+            float dy = playerY - worldY;
+            float distance = sqrtf(dx * dx + dy * dy);
 
+            // 2. Define the "Hearing Range" (e.g., 600 units)
+            float maxRange = 600.0f;
+
+            if (distance < maxRange) {
+                // Heartbeat Timer (so it doesn't play every single frame)
+                static float heartbeatTimer = 0.0f;
+                heartbeatTimer += dt;
+
+                // Adjust 0.6f to change how fast the heart beats
+                if (heartbeatTimer >= 0.6f) {
+                    // Calculate Volume (Closer = Louder)
+                    // Linear inverse: 1.0 at distance 0, 0.0 at maxRange
+                    float volumePercent = 1.0f - (distance / maxRange);
+
+                    // Clamp it between 0 and 1 just in case
+                    if (volumePercent < 0.0f) volumePercent = 0.0f;
+                    if (volumePercent > 1.0f) volumePercent = 1.0f;
+
+                    // Play with the calculated volume
+                    // We use an override for the volume here
+                    AudioSystem::Play("Heartbeat", volumePercent);
+
+                    heartbeatTimer = 0.0f;
+                }
+            }
+        }
         // Give up if the timer ends
         if (chaseTimer <= 0.0f) {
             currentState = EnemyState::PATROL;
@@ -419,4 +467,59 @@ bool SimpleEnemy::IsPositionWalkable(float x, float y, const std::vector<std::un
     }
     // Void outside all rooms is treated as a wall
     return false;
+}
+void SimpleEnemy::LoadVisionMesh() {
+    if (pVisionMesh) return;
+
+    int segments = 24; // Increased slightly for a smoother wide curve
+
+    // WIDER: Changed from 45 degrees to 90 degrees
+    float coneAngle = 90.0f * (3.14159265f / 180.0f);
+
+    // SHORTER: Hardcoded to 300 instead of the massive 500 detectionRange
+    float visionDist = 300.0f;
+
+    AEGfxMeshStart();
+    // The Tip of the cone (at enemy center)
+    for (int i = 0; i < segments; ++i) {
+        float a1 = -coneAngle / 2.0f + (i * coneAngle / segments);
+        float a2 = -coneAngle / 2.0f + ((i + 1) * coneAngle / segments);
+
+        // Triangle: Center -> Point1 on arc -> Point2 on arc
+        AEGfxTriAdd(0.0f, 0.0f, 0x88FF0000, 0, 0,
+            cosf(a1) * visionDist, sinf(a1) * visionDist, 0x00FF0000, 0, 0,
+            cosf(a2) * visionDist, sinf(a2) * visionDist, 0x00FF0000, 0, 0);
+    }
+    pVisionMesh = AEGfxMeshEnd();
+}
+
+void SimpleEnemy::DrawVisionOverlay() {
+    // Only draw if the mesh exists and the enemy is chasing
+    if (!pVisionMesh || currentState != EnemyState::CHASE || stunTimer > 0.0f) return;
+
+    // Update facing angle based on movement direction
+    if (!currentPath.empty() && currentPathIndex < currentPath.size()) {
+        AEVec2 target = currentPath[currentPathIndex];
+        facingAngle = atan2f(target.y - worldY, target.x - worldX);
+    }
+
+    // Build the transformation matrix
+    AEMtx33 scale, rot, trans, transform;
+    AEMtx33Scale(&scale, 1.0f, 1.0f);
+    AEMtx33Rot(&rot, facingAngle);
+    AEMtx33Trans(&trans, worldX, worldY);
+    
+    // Combine translation and rotation
+    AEMtx33Concat(&transform, &rot, &scale); // Scale then rotate
+    AEMtx33Concat(&transform, &trans, &transform); // Then translate
+
+    // Set render states
+    AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+    AEGfxSetBlendMode(AE_GFX_BM_ADD);
+    
+    // Apply transform and draw the existing mesh
+    AEGfxSetTransform(transform.m);
+    AEGfxMeshDraw(pVisionMesh, AE_GFX_MDM_TRIANGLES);
+    
+    AEGfxSetBlendMode(AE_GFX_BM_NONE);
 }

@@ -1,6 +1,7 @@
 // items.cpp
 #include "items.h"
 #include "Inventory.h"
+#include "AudioSystem.h"
 #include <algorithm>
 #include <cstdlib>
 #include <ctime>
@@ -142,10 +143,10 @@ void ItemsManager::CreateItemMesh() {
 	pItemMesh = AEGfxMeshEnd();
 
 	// Load Textures (Adjust path if needed!)
-	if (!texRedMushroom) texRedMushroom = AEGfxTextureLoad("Assets/Assets/redmushroom.png");
-	if (!texBlueMushroom) texBlueMushroom = AEGfxTextureLoad("Assets/Assets/bluemushroom.png");
-	if (!texGreenMushroom) texGreenMushroom = AEGfxTextureLoad("Assets/Assets/greenmushroom.png");
-	if (!texBabyCarrot) texBabyCarrot = AEGfxTextureLoad("Assets/Assets/babycarrot.png");
+	if (!texRedMushroom) texRedMushroom = AEGfxTextureLoad("Assets/redmushroom.png");
+	if (!texBlueMushroom) texBlueMushroom = AEGfxTextureLoad("Assets/bluemushroom.png");
+	if (!texGreenMushroom) texGreenMushroom = AEGfxTextureLoad("Assets/greenmushroom.png");
+	if (!texBabyCarrot) texBabyCarrot = AEGfxTextureLoad("Assets/babycarrot.png");
 }
 
 // Initialize the items system
@@ -245,6 +246,9 @@ void ItemsManager::Update(float playerX, float playerY, float deltaTime) {
 					break;
 				case ItemType::KEY:
 					printf("KEY collected!\n");
+					if (g_Inventory.GetKeyCount() == 3) {
+						AudioSystem::Play("AllKeys");
+					}
 					break;
 				}
 
