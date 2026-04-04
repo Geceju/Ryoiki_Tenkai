@@ -796,6 +796,7 @@ void Level_Draw()
 
 		// --- DRAW FLOOR (Reverted to colors) ---
 		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
+		AEGfxTextureSet(nullptr, 0, 0);
 
 		if (room->type == RoomType::Boss) AEGfxSetColorToMultiply(1.0f, 0.0f, 0.0f, 1.0f);
 		else if (!g_ShowColors) AEGfxSetColorToMultiply(0.5f, 0.5f, 0.5f, 1.0f);
@@ -818,6 +819,8 @@ void Level_Draw()
 			AEGfxSetRenderMode(AE_GFX_RM_COLOR);
 			AEGfxSetColorToMultiply(style.r, style.g, style.b, 1.0f);
 		}
+
+		AEGfxSetTransform(transform.m);
 
 		// Executes the draw call for the floor quad.
 		AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
@@ -843,6 +846,8 @@ void Level_Draw()
 				}
 			}
 		}
+
+		AEGfxTextureSet(nullptr, 0, 0);
 
 		// Renders the exit text specifically for the boss room.
 		if (room->type == RoomType::Boss)
