@@ -322,6 +322,9 @@ void Level_Init()
 		printf("=== RESTARTING - Items will be respawned ===\n");
 	}
 
+	// Explicitly snap camera to 0,0 immediately on restart
+	AEGfxSetCamPosition(0.0f, 0.0f);
+
 	// Calculate current level mathematically
 	g_CurrentRunLevel = (gGameStateCurr - GS_LEVEL1) + 1;
 	if (gGameStateCurr == GS_LEVEL1) {
