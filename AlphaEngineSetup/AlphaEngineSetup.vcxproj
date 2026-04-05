@@ -42,7 +42,6 @@
     <ClInclude Include="Enemy.h" />
     <ClInclude Include="GameStateManager.h" />
     <ClInclude Include="Inventory.h" />
-    <ClInclude Include="IGenerator.h" />
     <ClInclude Include="Leaderboard.h" />
     <ClInclude Include="Level.h" />
     <ClInclude Include="Items.h" />
