@@ -385,7 +385,7 @@ void Level_Init()
 	// --- SPAWN ENEMIES ---
 	g_Enemies.clear();
 
-	int totalEnemiesToSpawn = Random::Range(1, 4);
+	int totalEnemiesToSpawn = Random::Range(2, 4);
 	int spawnedCount = 0;
 
 	while (spawnedCount < totalEnemiesToSpawn)
