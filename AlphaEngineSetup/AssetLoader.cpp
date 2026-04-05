@@ -26,8 +26,8 @@ void LoadAllAssets() {
 	}
 
 	// Background Music
-	AudioSystem::LoadSound( "MenuBGM", "Assets/Sounds/mainmenu.wav", true);
-	AudioSystem::LoadSound("LevelBGM", "Assets/Sounds/ambience.wav", true);
+	AudioSystem::LoadSound( "MenuBGM", "Assets/Sounds/mainmenu.ogg", true);
+	AudioSystem::LoadSound("LevelBGM", "Assets/Sounds/ambience.ogg", true);
 
 	// SFX
 	AudioSystem::LoadSound("Click", "Assets/Sounds/button_click.wav", false);	// Played when the player clicks a button in the menu or settings
