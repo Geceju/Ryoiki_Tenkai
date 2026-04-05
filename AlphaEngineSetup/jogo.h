@@ -5,7 +5,7 @@
 #include <vector>
 #include <memory>
 #include "Room.h" 
-#include "ability.h"
+#include "Ability.h"
 
 class ItemsManager;
 class SimpleEnemy;
