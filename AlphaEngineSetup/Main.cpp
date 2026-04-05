@@ -25,7 +25,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     {
         // Initialize the engine system with the desired resolution and refresh rate
         AESysInit(hInstance, nCmdShow, 1600, 900, 1, 60, true, NULL);
-
+        //console hide/show
+        HWND hWndConsole = GetConsoleWindow();
+        if (hWndConsole != NULL) {
+            ShowWindow(hWndConsole, SW_HIDE);
+        }
         // Set the window title for the application
         AESysSetWindowTitle("Dungeon Generator Test");
 
