@@ -50,9 +50,10 @@ static const std::vector<std::string> credits = {
     "WWW.DIGIPEN.EDU",
     "All content \xC2\xA9 2026 DigiPen Institute of Technology Singapore. All Rights Reserved",
     "",
-//    "--- MUSIC COPYRIGHTS ---",
-//add music copyright here
-//    "",
+    "--- MUSIC COPYRIGHTS ---",
+    "Metadigger",
+    "Soundly",
+    "",
     "--- LECTURERS ---",
     "Prof Tommy",
     "Prof Soroor",
