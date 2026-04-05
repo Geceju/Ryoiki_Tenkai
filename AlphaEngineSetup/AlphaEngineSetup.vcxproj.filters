@@ -30,13 +30,10 @@
     <ClCompile Include="Items.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="jogo.cpp">
+    <ClCompile Include="Jogo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Level.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="References.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="RoomGenerator.cpp">
@@ -63,7 +60,7 @@
     <ClCompile Include="Inventory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ability.cpp">
+    <ClCompile Include="Ability.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Leaderboard.cpp">
@@ -92,7 +89,7 @@
     <ClInclude Include="MainMenu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="jogo.h">
+    <ClInclude Include="Jogo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="IGenerator.h">
@@ -140,7 +137,7 @@
     <ClInclude Include="Inventory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ability.h">
+    <ClInclude Include="Ability.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Leaderboard.h">
@@ -151,7 +148,7 @@
     </ClInclude>
     <ClInclude Include="Logo.h">
       <Filter>Header Files</Filter>
-    </ClInclude>    
+    </ClInclude>
     <ClInclude Include="AudioSystem.h">
       <Filter>Header Files</Filter>
     </ClInclude>

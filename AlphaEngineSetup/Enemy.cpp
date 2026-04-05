@@ -1,6 +1,7 @@
+//author : Winson Teo
 #include "Enemy.h"
 #include "AudioSystem.h"
-#include <math.h> // For sqrtf
+#include <math.h>
 #include <queue>
 #include <algorithm>
 
@@ -12,7 +13,7 @@ SimpleEnemy::SimpleEnemy()
     currentState(EnemyState::IDLE), pMesh(nullptr),
     currentPathIndex(0), pathRecalculateTimer(0.0f),chaseTimer(0.0f),
     hasPatrolTarget(false),maxChaseTime(5.0f),stunTimer(0.0f),
-    facingAngle(0.0f), pVisionMesh(nullptr) // FIX: Initialize these here
+    facingAngle(0.0f), pVisionMesh(nullptr)
 {
 }
 
@@ -35,7 +36,6 @@ void SimpleEnemy::Load()
     AEGfxTriAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, 0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
     pMesh = AEGfxMeshEnd();
 
-    LoadVisionMesh();
 }
 
 void SimpleEnemy::Unload()
@@ -467,59 +467,4 @@ bool SimpleEnemy::IsPositionWalkable(float x, float y, const std::vector<std::un
     }
     // Void outside all rooms is treated as a wall
     return false;
-}
-void SimpleEnemy::LoadVisionMesh() {
-    if (pVisionMesh) return;
-
-    int segments = 24; // Increased slightly for a smoother wide curve
-
-    // WIDER: Changed from 45 degrees to 90 degrees
-    float coneAngle = 90.0f * (3.14159265f / 180.0f);
-
-    // SHORTER: Hardcoded to 300 instead of the massive 500 detectionRange
-    float visionDist = 300.0f;
-
-    AEGfxMeshStart();
-    // The Tip of the cone (at enemy center)
-    for (int i = 0; i < segments; ++i) {
-        float a1 = -coneAngle / 2.0f + (i * coneAngle / segments);
-        float a2 = -coneAngle / 2.0f + ((i + 1) * coneAngle / segments);
-
-        // Triangle: Center -> Point1 on arc -> Point2 on arc
-        AEGfxTriAdd(0.0f, 0.0f, 0x88FF0000, 0, 0,
-            cosf(a1) * visionDist, sinf(a1) * visionDist, 0x00FF0000, 0, 0,
-            cosf(a2) * visionDist, sinf(a2) * visionDist, 0x00FF0000, 0, 0);
-    }
-    pVisionMesh = AEGfxMeshEnd();
-}
-
-void SimpleEnemy::DrawVisionOverlay() {
-    // Only draw if the mesh exists and the enemy is chasing
-    if (!pVisionMesh || currentState != EnemyState::CHASE || stunTimer > 0.0f) return;
-
-    // Update facing angle based on movement direction
-    if (!currentPath.empty() && currentPathIndex < currentPath.size()) {
-        AEVec2 target = currentPath[currentPathIndex];
-        facingAngle = atan2f(target.y - worldY, target.x - worldX);
-    }
-
-    // Build the transformation matrix
-    AEMtx33 scale, rot, trans, transform;
-    AEMtx33Scale(&scale, 1.0f, 1.0f);
-    AEMtx33Rot(&rot, facingAngle);
-    AEMtx33Trans(&trans, worldX, worldY);
-    
-    // Combine translation and rotation
-    AEMtx33Concat(&transform, &rot, &scale); // Scale then rotate
-    AEMtx33Concat(&transform, &trans, &transform); // Then translate
-
-    // Set render states
-    AEGfxSetRenderMode(AE_GFX_RM_COLOR);
-    AEGfxSetBlendMode(AE_GFX_BM_ADD);
-    
-    // Apply transform and draw the existing mesh
-    AEGfxSetTransform(transform.m);
-    AEGfxMeshDraw(pVisionMesh, AE_GFX_MDM_TRIANGLES);
-    
-    AEGfxSetBlendMode(AE_GFX_BM_NONE);
 }

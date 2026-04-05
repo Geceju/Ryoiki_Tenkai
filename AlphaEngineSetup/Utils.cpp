@@ -1,8 +1,5 @@
+//author : Tay Dylan
 #include "Utils.h"
-
-// ========================================================
-// RECT IMPLEMENTATION
-// ========================================================
 
 Rect::Rect()
     : left(0), top(0), right(0), bottom(0)
@@ -80,10 +77,6 @@ AEVec2 Rect::GetCenter() const
     return center;
 }
 
-// ========================================================
-// RANDOM IMPLEMENTATION
-// ========================================================
-
 namespace Random
 {
     void Init(uint32_t seed)
@@ -118,10 +111,6 @@ namespace Random
         return min + (AERandFloat() * (max - min));
     }
 }
-
-// ========================================================
-// SQUARE IMPLEMENTATION
-// ========================================================
 
 AEGfxVertexList* CreateSquare()
 {

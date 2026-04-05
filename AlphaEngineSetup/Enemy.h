@@ -26,8 +26,6 @@ public:
     // Abilties
     void Stun(float duration);
     bool IsStunned() const { return stunTimer > 0.0f; }
-    void LoadVisionMesh();
-    void DrawVisionOverlay();
 
 private:
     float worldX, worldY;
@@ -45,14 +43,14 @@ public:
     EnemyState currentState;
     struct AEGfxVertexList* pMesh;
 
-    // --- NEW: A* Pathfinding Data ---
+    // A* Pathfinding Data
     std::vector<AEVec2> currentPath;
     int currentPathIndex;
     float pathRecalculateTimer;
 
     bool IsPosValid(float x, float y, const std::vector<std::unique_ptr<Room>>& rooms);
 
-    // --- NEW: A* Helper Methods ---
+    // A* Helper Methods
     Room* GetRoomFromPos(float x, float y, const std::vector<std::unique_ptr<Room>>& rooms);
     void CalculateAStarPath(float targetX, float targetY, const std::vector<std::unique_ptr<Room>>& rooms);
     float stunTimer;

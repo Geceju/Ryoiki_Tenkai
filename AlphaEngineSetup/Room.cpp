@@ -1,3 +1,4 @@
+//author : Tay Dylan
 #include "Room.h"
 
 // Constructor initializes defaults

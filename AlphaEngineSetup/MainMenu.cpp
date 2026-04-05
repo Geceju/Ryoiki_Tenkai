@@ -1,3 +1,4 @@
+//author : Winson Teo, Tay Dylan
 #include "MainMenu.h"
 #include "SettingsMenu.h"
 #include "GameStateManager.h"
@@ -394,25 +395,3 @@ void MainMenu_Unload() {
     }
     SettingsMenu_Unload();
 }
-
-//if (runs.empty()) {
-//    AEGfxPrint(g_FontIdMenu, (char*)"No runs logged yet!", -0.143f, 0.0f, 1.0f, 0.5f, 0.5f, 0.5f, 1.0f);
-//}
-//else {
-//    for (size_t i = 0; i < runs.size(); ++i) {
-//        // Format the time into Minutes : Seconds
-//        int minutes = static_cast<int>(runs[i].timeTaken) / 60;
-//        float seconds = fmod(runs[i].timeTaken, 60.0f);
-
-//        char buffer[64];
-//        sprintf_s(buffer, "%d. Level %d  -  %02d:%05.2f", (int)i + 1, runs[i].levelReached, minutes, seconds);
-
-//        // Color top 3 yellow, rest white
-//        float r = (i < 3) ? 1.0f : 1.0f;
-//        float g = (i < 3) ? 1.0f : 1.0f;
-//        float b = (i < 3) ? 0.0f : 1.0f;
-
-//        AEGfxPrint(g_FontIdMenu, buffer, -0.14f, startY - (i * 0.08f), 1.0f, r, g, b, 1.0f);
-//    }
-//}
-//AEGfxPrint(g_FontIdMenu, (char*)"Click anywhere to close", -0.095f, 0.25f, 0.6f, 0.5f, 0.5f, 0.5f, 1.0f);

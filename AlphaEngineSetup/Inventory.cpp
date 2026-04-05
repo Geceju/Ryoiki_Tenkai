@@ -1,3 +1,4 @@
+//author : Keng Yip
 #include "Inventory.h"
 #include <cstdio>
 

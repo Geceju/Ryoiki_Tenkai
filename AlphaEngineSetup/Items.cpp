@@ -1,3 +1,4 @@
+//author : Keng Yip
 // items.cpp
 #include "items.h"
 #include "Inventory.h"

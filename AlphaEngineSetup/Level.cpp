@@ -1,7 +1,8 @@
+//author: Felicia, Dylan Lim, Tay Dylan, Keng Yip, Winson Teo
 #include "Level.h"
 #include "SettingsMenu.h"
 #include "RoomGenerator.h"
-#include "jogo.h" 
+#include "Jogo.h" 
 #include "GameStateManager.h"
 #include "Enemy.h"
 #include "Items.h"
@@ -872,12 +873,6 @@ void Level_Draw()
 	// Draw Items
 	// Draw Items (Now uses the official textured Draw function in Items.cpp!)
 	g_ItemsManager.Draw();
-	// --- DRAW ENEMY VISION CONES FIRST ---
-	AEGfxSetBlendMode(AE_GFX_BM_BLEND); // Ensure blending is ON for the cones
-	for (auto& enemy : g_Enemies)
-	{
-		enemy.DrawVisionOverlay();
-	}
 
 	// --- DRAW ENEMY SPRITES SECOND ---
 	for (auto& enemy : g_Enemies)

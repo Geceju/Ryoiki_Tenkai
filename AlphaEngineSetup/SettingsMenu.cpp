@@ -1,3 +1,4 @@
+//author : Tay Dylan
 #include "SettingsMenu.h"
 #include "GameStateManager.h"
 #include "AABBCollision.h"
