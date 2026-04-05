@@ -116,15 +116,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Level.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Room.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="RoomGenerator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="AssetLoader.h">
       <Filter>Header Files\Core</Filter>
     </ClInclude>
@@ -183,6 +174,15 @@
       <Filter>Header Files\Room Generation</Filter>
     </ClInclude>
     <ClInclude Include="Tilesets.h">
+      <Filter>Header Files\Room Generation</Filter>
+    </ClInclude>
+    <ClInclude Include="Level.h">
+      <Filter>Header Files\Menu</Filter>
+    </ClInclude>
+    <ClInclude Include="Room.h">
+      <Filter>Header Files\Room Generation</Filter>
+    </ClInclude>
+    <ClInclude Include="RoomGenerator.h">
       <Filter>Header Files\Room Generation</Filter>
     </ClInclude>
   </ItemGroup>
