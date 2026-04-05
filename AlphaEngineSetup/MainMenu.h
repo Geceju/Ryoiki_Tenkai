@@ -1,6 +1,5 @@
-#pragma once
+//author : Winson Teo, Tay Dylan
 
-// Lifecycle functions for the menu system, managed by the GameStateManager
 void MainMenu_Load();
 void MainMenu_Initialize();
 void MainMenu_Update();

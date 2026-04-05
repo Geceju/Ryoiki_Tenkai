@@ -1,4 +1,4 @@
-#pragma once
+//author : Winson Teo
 #include "AEEngine.h"
 
 // Defines the various operational states the application can reside in

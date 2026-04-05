@@ -1,4 +1,4 @@
-// items.h - Add InitializeGraphics method
+//author : Keng Yip
 #pragma once
 #include "AEEngine.h"
 #include <vector>

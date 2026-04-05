@@ -16,10 +16,9 @@ Character::Character(int startX, int startY, float tile)
 	moveSpeed = 200.0f;
 	stepTimer = 0.0f;
 	isMoving = false;
-	// --- NEW ---
 	facingAngle = 0.0f;
 	pVisionMesh = nullptr;
-	visionMultiplier = 1.0f; // <-- ADD THIS
+	visionMultiplier = 1.0f;
 }
 
 // Destructor calls unload
@@ -33,16 +32,13 @@ void Character::Load()
 {
 	if (pMesh != nullptr) return;
 
-	// 1. Load the texture (Make sure the path matches your folder exactly!)
 	pTexture = AEGfxTextureLoad("Assets/jogo.png");
 
 	AEGfxMeshStart();
-	// 2. PURE WHITE MESH (0xFFFFFFFF) so the texture's true colors show up
 	AEGfxTriAdd(-0.5f, -0.5f, 0xFFFFFFFF, 0.0f, 1.0f, 0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
 	AEGfxTriAdd(0.5f, -0.5f, 0xFFFFFFFF, 1.0f, 1.0f, 0.5f, 0.5f, 0xFFFFFFFF, 1.0f, 0.0f, -0.5f, 0.5f, 0xFFFFFFFF, 0.0f, 0.0f);
 	pMesh = AEGfxMeshEnd();
 
-	// Load abilities and vision mesh
 	abilities.Load();
 	LoadVisionMesh();
 }
@@ -258,13 +254,11 @@ void Character::LoadVisionMesh()
 	if (pVisionMesh) return;
 
 	AEGfxMeshStart();
-	int segments = 64; // High segment count for a smooth circle
+	int segments = 64;
 	float step = (2.0f * 3.14159265f) / segments;
 
-	// --- TWEAK THESE TO CHANGE YOUR FLASHLIGHT ---
 	float ambientRadius = 250.0f * visionMultiplier;
 	float darkRadius = 350.0f * visionMultiplier;
-	// -----------------------------------------------
 	float farRadius = 4000.0f;     // Massive outer bounds to cover the entire screen
 	float coneHalfAngle = (60.0f / 2.0f) * (3.14159265f / 180.0f); // 60-degree vision cone
 
@@ -330,13 +324,12 @@ void Character::DrawVisionOverlay()
 	AEMtx33Concat(&transform, &rot, &scale);
 	AEMtx33Concat(&transform, &trans, &transform);
 
-	// Alpha blending MUST be on for the darkness gradient to work!
 	AEGfxSetBlendMode(AE_GFX_BM_BLEND);
 	AEGfxSetRenderMode(AE_GFX_RM_COLOR);
 	AEGfxSetColorToMultiply(1.0f, 1.0f, 1.0f, 1.0f);
 	AEGfxSetTransform(transform.m);
 	AEGfxMeshDraw(pVisionMesh, AE_GFX_MDM_TRIANGLES);
-	AEGfxSetBlendMode(AE_GFX_BM_NONE); // Turn off when done
+	AEGfxSetBlendMode(AE_GFX_BM_NONE);
 }
 
 void Character::TriggerStun(std::vector<SimpleEnemy>& enemy) {

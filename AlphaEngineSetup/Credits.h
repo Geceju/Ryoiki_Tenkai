@@ -1,4 +1,4 @@
-#pragma once
+//author : Winson Teo
 #ifndef CREDITS
 #define CREDITS
 

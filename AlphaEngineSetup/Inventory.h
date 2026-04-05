@@ -1,3 +1,4 @@
+//author : Keng Yip
 #ifndef INVENTORY_H
 #define INVENTORY_H
 

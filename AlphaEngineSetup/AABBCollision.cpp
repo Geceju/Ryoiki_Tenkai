@@ -1,4 +1,4 @@
-//author : Tay Dylan, Dyaln Lim
+//author : Tay Dylan
 #include "AABBCollision.h"
 
 bool Collision_PointInRect(float px, float py, const Rect& rect)

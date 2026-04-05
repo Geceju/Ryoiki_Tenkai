@@ -1,4 +1,4 @@
-#pragma once
+//author : Tay Dylan
 #ifndef ROOM_HPP
 #define ROOM_HPP
 
