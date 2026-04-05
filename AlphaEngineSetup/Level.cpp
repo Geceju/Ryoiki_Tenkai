@@ -93,6 +93,9 @@ static bool s_ShowDebug = false;
 static bool s_GodMode = false;
 static bool s_NoClip = false;
 
+// Restart confirmation state
+static bool g_RestartConfirm = false;
+
 /**
  * @brief Draws a rotated and scaled line segment between two points using a unit square mesh.
  * @param x1 The starting X coordinate.
@@ -315,7 +318,7 @@ void Level_Init()
 
 	if (gGameStateCurr == GS_RESTART) {
 		g_ItemsInitialized = false;  // Force fresh spawn
-		g_ItemsManager.Clear();       // Clear old items (you need to add this method)
+		g_ItemsManager.Clear();      // Clear old items (you need to add this method)
 		printf("=== RESTARTING - Items will be respawned ===\n");
 	}
 
@@ -538,6 +541,10 @@ void Level_Update()
 		return; // Stop game logic while menu is open
 	}
 
+	if (AEInputCheckTriggered(AEVK_R)) {
+		g_RestartConfirm = true; // Show restart confirmation
+	}
+
 	// Capture Player Name for Leaderboard
 	if (s_IsEnteringName) {
 		// Capture A-Z keys
@@ -602,7 +609,7 @@ void Level_Update()
 			gGameStateNext = GS_MAINMENU; // Return to menu
 		}
 		if (AEInputCheckTriggered(AEVK_R)) {
-			gGameStateNext = GS_RESTART; // Allow quick restart
+			g_RestartConfirm = true; // Show restart confirmation
 		}
 		return; // Stop the rest of the game from running!
 	}
@@ -610,8 +617,28 @@ void Level_Update()
 	float dt = (float)AEFrameRateControllerGetFrameTime();
 	g_RunTimer += dt;
 
-	// Normal Level Updates
-	if (AEInputCheckTriggered(AEVK_R)) { gGameStateNext = GS_RESTART; printf("Restarting Level...\n"); }
+	// If the confirmation overlay is active, intercept all inputs
+	if (g_RestartConfirm)
+	{
+		// Pressing 'Y' confirms the restart
+		if (AEInputCheckTriggered(AEVK_Y))
+		{
+			AudioSystem::Play("Click");
+			g_RestartConfirm = false;
+			printf("Restarting Level...\n");
+			gGameStateNext = GS_RESTART; // triggers the existing restart logic
+		}
+
+		// Pressing 'N' or 'R' again cancels the restart
+		if (AEInputCheckTriggered(AEVK_N) || AEInputCheckTriggered(AEVK_ESCAPE))
+		{
+			AudioSystem::Play("Click");
+			g_RestartConfirm = false;
+		}
+
+		// Block other updates while the menu is open
+		return;
+	}
 
 	// --- F3 DEBUG MENU CONTROLS ---
 	if (AEInputCheckTriggered(AEVK_F3)) {
@@ -871,15 +898,16 @@ void Level_Draw()
 	}
 
 	// Draw Items
-	// Draw Items (Now uses the official textured Draw function in Items.cpp!)
+	// Draw Items (uses the official textured Draw function in Items.cpp)
 	g_ItemsManager.Draw();
 
-	// --- DRAW ENEMY SPRITES SECOND ---
+	// --- DRAW ENEMY SPRITES ---
 	for (auto& enemy : g_Enemies)
 	{
 		enemy.Draw(); // This function handles its own internal states
 	}
-	// --- DRAW THE DARKNESS OVERLAY HERE ---
+
+	// --- DRAW THE DARKNESS OVERLAY ---
 	if (g_Character) {
 		g_Character->DrawVisionOverlay();
 
@@ -887,6 +915,7 @@ void Level_Draw()
 		g_Character->DrawAbilities();
 		g_Character->Draw();
 	}
+
 	// --- DRAW DAMAGE PARTICLES ---
 	if (!g_DamageParticles.empty()) {
 		AEGfxSetBlendMode(AE_GFX_BM_BLEND);
@@ -905,9 +934,8 @@ void Level_Draw()
 		}
 		AEGfxSetBlendMode(AE_GFX_BM_NONE);
 	}
-	// -------------------------------------------
 
-	// Wayfinder to boss room
+	// --- WAYFINDER TO BOSS ROOM ---
 	if (g_ShowWayfinder && g_BossRoom && g_Character)
 	{
 		float px = g_Character->GetWorldX(), py = g_Character->GetWorldY();
@@ -927,7 +955,7 @@ void Level_Draw()
 		}
 	}
 
-	// Wayfinder to key location
+	// --- WAYFINDER TO KEY LOCATION ---
 	if (g_ShowKeyLocation && g_Character)
 	{
 		float pX = g_Character->GetWorldX();
@@ -1026,6 +1054,7 @@ void Level_Draw()
 			AEGfxPrint(g_FontId, timeBuf, -0.95f, 0.90f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
 		}
 	}
+
 	//DEBUG MENU
 	if (s_ShowDebug && g_FontId >= 0) {
 		char fpsBuf[32], godBuf[32], clipBuf[32];
@@ -1198,6 +1227,7 @@ void Level_Draw()
 		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
 		AEGfxSetBlendMode(AE_GFX_BM_NONE);
 	}
+
 	// --- DRAW TUTORIAL OVERLAY ---
 	if (s_ShowTutorial) {
 		// Draw a semi-transparent dark background
@@ -1282,7 +1312,35 @@ void Level_Draw()
 		AEGfxSetRenderMode(AE_GFX_RM_COLOR);
 		AEGfxSetBlendMode(AE_GFX_BM_NONE);
 	}
-	// -----------------------------
+
+	// --- RESTART CONFIRMATION OVERLAY ---
+	if (g_RestartConfirm)
+	{
+		float camX, camY;
+		AEGfxGetCamPosition(&camX, &camY);
+
+		// Render a semi-transparent modal overlay
+		AEMtx33 scale, trans, transform;
+		AEMtx33Scale(&scale, 400.0f, 200.0f);
+		AEMtx33Trans(&trans, camX, camY);
+		AEMtx33Concat(&transform, &trans, &scale);
+
+		AEGfxSetBlendMode(AE_GFX_BM_BLEND);
+		// Dim the background to focus on the prompt
+		AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 0.85f);
+		AEGfxSetTransform(transform.m);
+		AEGfxMeshDraw(g_pUnitSquare, AE_GFX_MDM_TRIANGLES);
+		AEGfxSetBlendMode(AE_GFX_BM_NONE);
+
+		// Draw confirmation text
+		if (g_FontId >= 0)
+		{
+			// Center the text prompts relative to the camera
+			AEGfxPrint(g_FontId, (char*)"Restart Level?", -0.08f, 0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+			AEGfxPrint(g_FontId, (char*)"Press [Y] to Confirm", -0.12f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+			AEGfxPrint(g_FontId, (char*)"Press [N] to Cancel", -0.12f, -0.12f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f);
+		}
+	}
 }
 
 // Clears the logic and memory for the current level objects.
