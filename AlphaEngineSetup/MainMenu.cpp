@@ -292,7 +292,6 @@ void MainMenu_Draw() {
         AEGfxPrint(g_FontIdTitle, (char*)"TOP 10 RUNS", -0.28f, 0.35f, 0.8f, 1.0f, 0.8f, 0.0f, 1.0f);
 
         const auto& runs = LeaderboardSystem::GetTopRuns();
-        float startY = 0.15f;
 
         if (runs.empty()) {
             AEGfxPrint(g_FontIdMenu, (char*)"No runs logged yet!", -0.15f, 0.0f, 1.0f, 0.5f, 0.5f, 0.5f, 1.0f);
@@ -308,7 +307,7 @@ void MainMenu_Draw() {
                 float seconds = fmod(runs[i].timeTaken, 60.0f);
 
                 // Color top 3 yellow, rest white
-                float r = (i < 3) ? 1.0f : 1.0f;
+                float red = (i < 3) ? 1.0f : 1.0f;
                 float g = (i < 3) ? 1.0f : 1.0f;
                 float b = (i < 3) ? 0.0f : 1.0f;
 
@@ -319,17 +318,17 @@ void MainMenu_Draw() {
                 // 1. Draw Rank 
                 char rankBuf[16];
                 sprintf_s(rankBuf, "%d.", (int)i + 1);
-                AEGfxPrint(g_FontIdMenu, rankBuf, -0.35f, rowY, 0.85f, r, g, b, 1.0f);
+                AEGfxPrint(g_FontIdMenu, rankBuf, -0.35f, rowY, 0.85f, red, g, b, 1.0f);
 
                 // 2. Draw Username 
                 char nameBuf[16];
                 sprintf_s(nameBuf, "%s", runs[i].playerName.c_str());
-                AEGfxPrint(g_FontIdMenu, nameBuf, -0.15f, rowY, 0.85f, r, g, b, 1.0f);
+                AEGfxPrint(g_FontIdMenu, nameBuf, -0.15f, rowY, 0.85f, red, g, b, 1.0f);
 
                 // 3. Draw Time & Level 
                 char timeBuf[32];
                 sprintf_s(timeBuf, "Lvl %d  |  %02d:%05.2f", runs[i].levelReached, minutes, seconds);
-                AEGfxPrint(g_FontIdMenu, timeBuf, 0.15f, rowY, 0.85f, r, g, b, 1.0f);
+                AEGfxPrint(g_FontIdMenu, timeBuf, 0.15f, rowY, 0.85f, red, g, b, 1.0f);
             }
         }
     }

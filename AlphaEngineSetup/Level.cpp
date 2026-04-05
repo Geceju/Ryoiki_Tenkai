@@ -541,7 +541,7 @@ void Level_Update()
 	// Capture Player Name for Leaderboard
 	if (s_IsEnteringName) {
 		// Capture A-Z keys
-		for (int i = AEVK_A; i <= AEVK_Z; ++i) {
+		for (u8 i = AEVK_A; i <= AEVK_Z; ++i) {
 			if (AEInputCheckTriggered(i)) {
 				if (s_CurrentName.length() < 8) {
 					s_CurrentName += (char)i;
@@ -760,7 +760,7 @@ void Level_Update()
 			}
 		}
 
-		g_ItemsManager.Update(playerWorldX, playerWorldY, 0.0f);
+		g_ItemsManager.Update(playerWorldX, playerWorldY);
 	}
 
 	// Debug: Show item count when 'I' is pressed

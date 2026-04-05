@@ -159,8 +159,8 @@ void SimpleEnemy::Update(float playerX, float playerY, float dt, const std::vect
         chaseTimer -= dt;
         if (stunTimer <= 0.0f) {
             // 1. Calculate distance between Enemy and Player
-            float dx = playerX - worldX;
-            float dy = playerY - worldY;
+            dx = playerX - worldX;
+            dy = playerY - worldY;
             float distance = sqrtf(dx * dx + dy * dy);
 
             // 2. Define the "Hearing Range" (e.g., 600 units)
@@ -288,7 +288,6 @@ void SimpleEnemy::Draw()
 bool SimpleEnemy::IsPosValid(float x, float y, const std::vector<std::unique_ptr<Room>>& rooms)
 {
     // A simple collision radius so the enemy doesn't clip halfway into walls
-    float padding = 10.0f;
 
     for (const auto& room : rooms)
     {
@@ -329,7 +328,6 @@ void SimpleEnemy::CalculateAStarPath(float targetX, float targetY, const std::ve
     currentPathIndex = 0;
 
     Room* startRoom = GetRoomFromPos(worldX, worldY, rooms);
-    Room* targetRoom = GetRoomFromPos(targetX, targetY, rooms);
 
 
     // Convert World space to Grid space

@@ -215,7 +215,7 @@ void Character::CheckItemCollection(ItemsManager& itemsManager)
 {
 	// Call Update on items manager with player's current position
 	// This will check collision for all items
-	itemsManager.Update(worldX, worldY, 0.0f);
+	itemsManager.Update(worldX, worldY);
 }
 
 // Checks collision against the specific tile map of the room
@@ -277,7 +277,6 @@ void Character::LoadVisionMesh()
 
 		// Alpha values: 0 = Bright/Transparent, 220 = Dim, 255 = Pitch Black
 		unsigned int alphaCenter1 = cone1 ? 0 : 220;
-		unsigned int alphaCenter2 = cone2 ? 0 : 220;
 		unsigned int alphaAmb1 = cone1 ? 0 : 220;
 		unsigned int alphaAmb2 = cone2 ? 0 : 220;
 		unsigned int alphaDark = 255;
@@ -285,7 +284,6 @@ void Character::LoadVisionMesh()
 
 		// Convert Alpha to AARRGGBB format (Colors remain 000000 Black)
 		unsigned int cCenter1 = (alphaCenter1 << 24);
-		unsigned int cCenter2 = (alphaCenter2 << 24);
 		unsigned int cAmb1 = (alphaAmb1 << 24);
 		unsigned int cAmb2 = (alphaAmb2 << 24);
 		unsigned int cDark = (alphaDark << 24);

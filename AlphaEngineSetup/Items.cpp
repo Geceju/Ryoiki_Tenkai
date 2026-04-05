@@ -151,9 +151,8 @@ void ItemsManager::CreateItemMesh() {
 }
 
 // Initialize the items system
-void ItemsManager::Initialize(int gridWidth, int gridHeight,
-	const std::vector<std::vector<int>>& maze, float tileSize) {
-	this->tileSize = tileSize;
+void ItemsManager::Initialize(float ptileSize) {
+	this->tileSize = ptileSize;
 	items.clear();
 }
 
@@ -223,7 +222,7 @@ void ItemsManager::SpawnRandomItems(int count, const std::vector<std::vector<int
 }
 
 // Update items (check collection, handle lifetime)
-void ItemsManager::Update(float playerX, float playerY, float deltaTime) {
+void ItemsManager::Update(float playerX, float playerY) {
 	for (auto& item : items) {
 		if (!item.collected && item.active) {
 			// Check collection

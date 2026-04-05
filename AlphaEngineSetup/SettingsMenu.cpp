@@ -228,14 +228,14 @@ void SettingsMenu_Draw(bool isIngame) {
 
     if (g_ConfirmState != 0) {
         // Draw dark background panel (Relative to Camera)
-        AEMtx33 scale, trans, transform;
-        AEMtx33Scale(&scale, 400.0f, 300.0f);
-        AEMtx33Trans(&trans, camX, camY);
-        AEMtx33Concat(&transform, &trans, &scale);
+        AEMtx33 scalel, transl, transforml;
+        AEMtx33Scale(&scalel, 400.0f, 300.0f);
+        AEMtx33Trans(&transl, camX, camY);
+        AEMtx33Concat(&transforml, &transl, &scalel);
 
         AEGfxSetBlendMode(AE_GFX_BM_BLEND);
         AEGfxSetColorToMultiply(0.0f, 0.0f, 0.0f, 0.9f);
-        AEGfxSetTransform(transform.m);
+        AEGfxSetTransform(transforml.m);
         AEGfxMeshDraw(pMeshSettings, AE_GFX_MDM_TRIANGLES);
         AEGfxSetBlendMode(AE_GFX_BM_NONE);
 

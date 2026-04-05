@@ -45,7 +45,7 @@ public:
 	~ItemsManager();
 
 	// Initialize the items system
-	void Initialize(int gridWidth, int gridHeight, const std::vector<std::vector<int>>& maze, float tileSize = 48.0f);
+	void Initialize(float tileSize = 48.0f);
 
 	// Initialize graphics
 	void InitializeGraphics();
@@ -60,7 +60,7 @@ public:
 	void SpawnKey();
 
 	// Update items (check collection, handle lifetime)
-	void Update(float playerX, float playerY, float deltaTime);
+	void Update(float playerX, float playerY);
 
 	// Draw all items
 	void Draw() const;
