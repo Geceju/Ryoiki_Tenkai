@@ -26,7 +26,7 @@ void Logo_Update() {
 	f32 dt = (f32)AEFrameRateControllerGetFrameTime();
 	elapsedtime += dt;
 
-	if (elapsedtime >= 5.0f || AEInputCheckTriggered(AEVK_LBUTTON)) {
+	if (elapsedtime >= 2.0f) {
 		elapsedtime = 0.0f;
 		gGameStateNext = GS_MAINMENU;  
 	}
