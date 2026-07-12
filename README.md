@@ -27,3 +27,6 @@ Gameplay tips:
 - Try to loop enemies if they are chasing you, using obstacles to slow them down. This is the most effective way if you have no items.
 - Items are limited, so use them when necessary. While ability durations are generous, players should prioritize collecting enough items before engaging in high-risk maneuvers.
 - For higher levels, listening for the heartbeat sound is crucial. Since your FOV is smaller.
+
+
+Archived on 12/07/2026
